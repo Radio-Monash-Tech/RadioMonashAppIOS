@@ -13,3 +13,26 @@ enum Brand {
     static let secondaryText = Color(.secondaryLabel)
     static let tertiaryText = Color(.tertiaryLabel)
 }
+
+/// Fixed dark palette for the immersive player screen — deliberately ignores
+/// system light/dark mode, mirroring the Android app's always-dark artwork
+/// backdrop. Hex values match `ui/theme/Color.kt` and `ModernRadioScreen.kt`
+/// in the Android reference project.
+enum PlayerPalette {
+    static let live = Color(red: 0.114, green: 0.725, blue: 0.329)       // #1DB954
+    static let warn = Color(red: 1.0, green: 0.651, blue: 0.149)          // #FFA726
+    static let error = Color(red: 0.937, green: 0.329, blue: 0.314)       // #EF5350
+    static let favoriteFilled = Color(red: 0.545, green: 0, blue: 0)      // #8B0000
+    static let sheetBackground = Color(red: 0.118, green: 0.118, blue: 0.118) // #1E1E1E
+
+    static func platformColor(_ name: String) -> Color {
+        switch name.lowercased() {
+        case "spotify": return live
+        case "apple music": return Color(red: 1.0, green: 0.306, blue: 0.420)   // #FF4E6B
+        case "youtube music", "youtube": return Color(red: 1.0, green: 0, blue: 0)
+        case "bandcamp": return Color(red: 0.114, green: 0.635, blue: 0.761)    // #1DA1C2
+        case "deezer": return Color(red: 0.635, green: 0.220, blue: 1.0)        // #A238FF
+        default: return Color(white: 0.4)
+        }
+    }
+}
