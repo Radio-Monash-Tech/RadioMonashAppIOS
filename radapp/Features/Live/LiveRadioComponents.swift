@@ -2,19 +2,15 @@ import SwiftUI
 
 // MARK: - Background
 
-/// Full-bleed blurred artwork + dark gradient scrim behind the whole screen.
 struct ArtworkBackgroundLayer: View {
     let url: URL?
 
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                Color.black
+                Color(.systemBackground)
                 AsyncImage(url: url) { phase in
                     if case .success(let image) = phase {
-                        // Explicit frame + clipped() before blur: AsyncImage's
-                        // intrinsic size otherwise leaks through scaledToFill,
-                        // which both breaks the fill and makes blur invisible.
                         image.resizable().scaledToFill()
                             .frame(width: geo.size.width, height: geo.size.height)
                             .clipped()
@@ -24,7 +20,7 @@ struct ArtworkBackgroundLayer: View {
                     }
                 }
                 LinearGradient(
-                    colors: [.black.opacity(0.7), .black.opacity(0.4), .black.opacity(0.8)],
+                    colors: [Color(.systemBackground).opacity(0.7), Color(.systemBackground).opacity(0.4), Color(.systemBackground).opacity(0.8)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -34,85 +30,7 @@ struct ArtworkBackgroundLayer: View {
     }
 }
 
-/// Plain artwork fill used for the hero square and history rows. Always
-/// sizes to the frame given by its parent (via GeometryReader) rather than
-/// the image's own intrinsic size — see the note in `ArtworkBackgroundLayer`.
-struct ArtworkImage: View {
-    let url: URL?
-
-    var body: some View {
-        GeometryReader { geo in
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image.resizable().scaledToFill()
-                default:
-                    ZStack {
-                        Color.white.opacity(0.08)
-                        Text("RM")
-                            .font(.system(size: min(geo.size.width, geo.size.height) * 0.3, weight: .heavy))
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
-                }
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
-            .clipped()
-        }
-    }
-}
-
-// MARK: - Top bar
-
-struct ImmersiveTopBar: View {
-    let connectivity: Connectivity
-    let onFavorites: () -> Void
-    let onStatistics: () -> Void
-
-    var body: some View {
-        HStack {
-            HStack(spacing: 12) {
-                Text("RADMON RADIO")
-                    .font(.system(size: 14, weight: .bold))
-                    .kerning(1.5)
-                    .foregroundStyle(.white)
-                ConnectionQualityBadge(connectivity: connectivity)
-            }
-            Spacer()
-            HStack(spacing: 12) {
-                TopBarIconButton(systemImage: "heart", action: onFavorites)
-                    .accessibilityLabel("Liked songs")
-                TopBarIconButton(systemImage: "chart.bar", action: onStatistics)
-                    .accessibilityLabel("Listening statistics")
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(LinearGradient(colors: [.black.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom))
-    }
-}
-
-struct TopBarIconButton: View {
-    let systemImage: String
-    let action: () -> Void
-    @State private var pressed = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
-                .background(Color.white.opacity(0.15), in: Circle())
-                .scaleEffect(pressed ? 0.85 : 1)
-        }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in pressed = true }
-                .onEnded { _ in pressed = false }
-        )
-        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: pressed)
-    }
-}
+// MARK: - Connection badge
 
 struct ConnectionQualityBadge: View {
     let connectivity: Connectivity
@@ -169,7 +87,7 @@ struct GlowingArtwork: View {
         ZStack {
             RoundedRectangle(cornerRadius: 20)
                 .fill(RadialGradient(
-                    colors: [.white.opacity(glow ? 0.09 : 0.045), .clear],
+                    colors: [Color.primary.opacity(glow ? 0.09 : 0.045), .clear],
                     center: .center, startRadius: 0, endRadius: 220
                 ))
                 .padding(-4)
@@ -209,13 +127,13 @@ struct MetadataDisplay: View {
                 VStack(spacing: 12) {
                     Text(nowPlaying.title)
                         .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .animation(.default, value: nowPlaying.title)
                     Text(nowPlaying.artist)
                         .font(.system(size: 17))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .animation(.default, value: nowPlaying.artist)
                 }
@@ -230,17 +148,17 @@ struct MetadataDisplay: View {
                 .font(.system(size: 40))
                 .foregroundStyle(PlayerPalette.error)
             Text(message)
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
             Button(action: onRetry) {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.clockwise")
                     Text("Retry").fontWeight(.semibold)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 20)
                 .frame(height: 48)
-                .background(Color.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 24))
+                .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 24))
             }
             .buttonStyle(.plain)
         }
@@ -264,15 +182,15 @@ struct VolumeControlBar: View {
                 }
             } label: {
                 Image(systemName: volume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .frame(width: 48, height: 48)
-                    .background(Color.white.opacity(0.1), in: Circle())
+                    .background(.fill.tertiary, in: Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(volume == 0 ? "Unmute" : "Mute")
 
             Slider(value: $volume, in: 0...1)
-                .tint(.white)
+                .tint(.primary)
                 .accessibilityLabel("Volume")
         }
     }
@@ -285,10 +203,10 @@ struct PlaybackFAB: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                Circle().fill(Color.white)
+                Circle().fill(.primary)
                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 28))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Color(.systemBackground))
             }
             .frame(width: 72, height: 72)
             .shadow(color: .black.opacity(0.35), radius: 10, y: 6)
@@ -303,13 +221,18 @@ struct PlaybackFAB: View {
 struct FavoriteToggleButton: View {
     let isFavorite: Bool
     let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var filledColor: Color {
+        colorScheme == .dark ? PlayerPalette.favoriteFilled : PlayerPalette.error
+    }
 
     var body: some View {
         Button(action: action) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12).fill(.white)
+                RoundedRectangle(cornerRadius: 12).fill(.primary)
                 Image(systemName: isFavorite ? "heart.fill" : "heart")
-                    .foregroundStyle(isFavorite ? PlayerPalette.favoriteFilled : .black)
+                    .foregroundStyle(isFavorite ? filledColor : Color(.systemBackground))
             }
             .frame(width: 56, height: 56)
             .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
@@ -388,15 +311,22 @@ struct RecentlyPlayedSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Recently Played")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 24)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Played earlier")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.primary)
+                Spacer()
+                if !tracks.isEmpty {
+                    NavigationLink("See all", value: LiveRoute.history)
+                        .font(.subheadline)
+                }
+            }
+            .padding(.horizontal, 24)
 
             if tracks.isEmpty {
                 Text("Track history appears here once the station reports it.")
                     .font(.system(size: 13))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(.secondary)
                     .padding(.horizontal, 24)
             } else {
                 VStack(spacing: 0) {
@@ -404,7 +334,6 @@ struct RecentlyPlayedSection: View {
                         RecentlyPlayedRow(track: track)
                         if track.id != tracks.last?.id {
                             Divider()
-                                .overlay(Color.white.opacity(0.08))
                                 .padding(.leading, 24 + 48 + 12)
                         }
                     }
@@ -428,17 +357,17 @@ private struct RecentlyPlayedRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text(track.artist)
                     .font(.system(size: 12.5))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer()
             Text(track.playedAt, style: .time)
                 .font(.system(size: 11.5, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 10)

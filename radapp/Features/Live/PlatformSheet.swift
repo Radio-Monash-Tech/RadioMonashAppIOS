@@ -12,15 +12,15 @@ struct PlatformSheet: View {
         VStack(spacing: 8) {
             Text("Listen on")
                 .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
 
             Text(track.title)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
             Text(track.artist)
                 .font(.system(size: 14))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(.secondary)
                 .padding(.bottom, 16)
 
             VStack(spacing: 12) {
@@ -38,7 +38,7 @@ struct PlatformSheet: View {
         .padding(.top, 24)
         .padding(.bottom, 32)
         .frame(maxWidth: .infinity)
-        .background(PlayerPalette.sheetBackground)
+        .background(Color(.secondarySystemBackground))
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
@@ -57,15 +57,15 @@ private struct PlatformRow: View {
 
             Text(name)
                 .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
 
             Spacer()
 
             Image(systemName: "chevron.right")
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 16))
+        .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 16))
     }
 }

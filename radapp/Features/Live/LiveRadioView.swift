@@ -1,8 +1,10 @@
 import SwiftUI
 
+enum LiveRoute: Hashable { case liked, statistics, history }
+
 struct LiveRadioView: View {
 
-    @StateObject private var model = RadioPlayerModel()
+    @EnvironmentObject private var model: RadioPlayerModel
     @State private var showingPlatformSheet = false
     @State private var path = NavigationPath()
     @State private var likeBurstTrigger = 0
@@ -12,34 +14,41 @@ struct LiveRadioView: View {
             ZStack {
                 ArtworkBackgroundLayer(url: model.nowPlaying.artworkURL)
 
-                VStack(spacing: 0) {
-                    ImmersiveTopBar(
-                        connectivity: model.connectivity,
-                        onFavorites: { path.append(LiveRoute.liked) },
-                        onStatistics: { path.append(LiveRoute.statistics) }
-                    )
-
-                    GeometryReader { viewport in
-                        ScrollView(showsIndicators: false) {
-                            VStack(spacing: 0) {
-                                playerSection
-                                    .frame(minHeight: viewport.size.height)
-                                RecentlyPlayedSection(tracks: model.history)
-                            }
+                GeometryReader { viewport in
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 0) {
+                            playerSection
+                                .frame(minHeight: viewport.size.height)
+                            RecentlyPlayedSection(tracks: model.history)
                         }
                     }
                 }
 
                 HeartBurstOverlay(trigger: likeBurstTrigger)
             }
-            .toolbar(.hidden, for: .navigationBar)
+            .navigationTitle("Radio Monash")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    ConnectionQualityBadge(connectivity: model.connectivity)
+                        .fixedSize()
+                }
+                .sharedBackgroundVisibility(.hidden)
+
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    NavigationLink(value: LiveRoute.liked) {
+                        Label("Liked Songs", systemImage: "heart")
+                    }
+                    NavigationLink(value: LiveRoute.statistics) {
+                        Label("Listening Statistics", systemImage: "chart.bar")
+                    }
+                }
+            }
             .sheet(isPresented: $showingPlatformSheet) {
                 PlatformSheet(track: model.nowPlaying)
             }
             .navigationDestination(for: LiveRoute.self) { destination(for: $0) }
         }
-        .task { model.prepareSession() }
-        .preferredColorScheme(.dark)
     }
 
     private var playerSection: some View {
@@ -73,7 +82,7 @@ struct LiveRadioView: View {
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 20)
-        .background(LinearGradient(colors: [.clear, .black.opacity(0.3)], startPoint: .top, endPoint: .bottom))
+        .background(LinearGradient(colors: [.clear, Color(.systemBackground).opacity(0.3)], startPoint: .top, endPoint: .bottom))
     }
 
     // MARK: Destinations
@@ -82,23 +91,16 @@ struct LiveRadioView: View {
     private func destination(for route: LiveRoute) -> some View {
         switch route {
         case .liked:
-            placeholder("Liked Songs")
+            LikedSongsView()
         case .statistics:
-            placeholder("Listening Statistics")
+            ListeningStatisticsView()
         case .history:
-            placeholder("History")
+            PlayHistoryView()
         }
-    }
-
-    private func placeholder(_ title: String) -> some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            Text(title).foregroundStyle(.white)
-        }
-        .navigationTitle(title)
     }
 }
 
 #Preview {
     LiveRadioView()
+        .environmentObject(RadioPlayerModel())
 }
