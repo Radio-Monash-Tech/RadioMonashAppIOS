@@ -9,15 +9,15 @@ struct ArtworkBackgroundLayer: View {
         GeometryReader { geo in
             ZStack {
                 Color(.systemBackground)
-                AsyncImage(url: url) { phase in
-                    if case .success(let image) = phase {
-                        image.resizable().scaledToFill()
-                            .frame(width: geo.size.width, height: geo.size.height)
-                            .clipped()
-                            .blur(radius: 50)
-                            .scaleEffect(1.2)
-                            .opacity(0.3)
-                    }
+                CachedArtwork(url: url) { image in
+                    image.resizable().scaledToFill()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                        .blur(radius: 50)
+                        .scaleEffect(1.2)
+                        .opacity(0.3)
+                } placeholder: {
+                    EmptyView()
                 }
                 LinearGradient(
                     colors: [Color(.systemBackground).opacity(0.7), Color(.systemBackground).opacity(0.4), Color(.systemBackground).opacity(0.8)],
@@ -168,8 +168,14 @@ struct MetadataDisplay: View {
 // MARK: - Transport
 
 struct VolumeControlBar: View {
-    @Binding var volume: Float
+    @State private var volume: Float
     @State private var lastVolume: Float = 1
+    private let onChange: (Float) -> Void
+
+    init(initialVolume: Float, onChange: @escaping (Float) -> Void) {
+        _volume = State(initialValue: initialVolume)
+        self.onChange = onChange
+    }
 
     var body: some View {
         HStack(spacing: 16) {
@@ -193,6 +199,7 @@ struct VolumeControlBar: View {
                 .tint(.primary)
                 .accessibilityLabel("Volume")
         }
+        .onChange(of: volume) { _, newValue in onChange(newValue) }
     }
 }
 

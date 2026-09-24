@@ -11,8 +11,7 @@ final class RadioPlayerModel: ObservableObject {
     @Published private(set) var liveShow: LiveShow?
     @Published private(set) var history: [PlayedTrack] = []
     @Published private(set) var connectivity: Connectivity = .good
-    @Published var volume: Float = 0.72 { didSet { player?.volume = volume } }
-    @Published private(set) var elapsed: TimeInterval = 0
+    var volume: Float = 0.72 { didSet { player?.volume = volume } }
     @Published private(set) var isCurrentTrackLiked = false
 
     /// RadioCult stream + metadata endpoints for the station.
@@ -26,11 +25,14 @@ final class RadioPlayerModel: ObservableObject {
 
     private var player: AVPlayer?
     private var metadataTimer: AnyCancellable?
-    private var tick: AnyCancellable?
     private var statusObservation: NSKeyValueObservation?
 
     var isOnAir: Bool { liveShow != nil }
     var isBusy: Bool { state == .connecting }
+
+    var elapsed: TimeInterval {
+        nowPlaying.startedAt.map { Date().timeIntervalSince($0) } ?? 0
+    }
 
     /// 0…1 progress through the current track. Live radio has no seekable
     /// timeline, so this is derived from the metadata's start time.
@@ -96,7 +98,6 @@ final class RadioPlayerModel: ObservableObject {
                 case .readyToPlay:
                     self.player?.play()
                     self.state = .playing
-                    self.startTicking()
                 case .failed:
                     self.state = .failed(item.error?.localizedDescription
                         ?? "We couldn't reach the stream.")
@@ -124,28 +125,19 @@ final class RadioPlayerModel: ObservableObject {
             .sink { [weak self] _ in Task { await self?.refreshMetadata() } }
     }
 
-    private func startTicking() {
-        tick = Timer.publish(every: 1, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                guard let self, let start = self.nowPlaying.startedAt else { return }
-                self.elapsed = Date().timeIntervalSince(start)
-            }
-    }
-
     func refreshMetadata() async {
         do {
             let (data, _) = try await URLSession.shared.data(for: authorizedRequest(metadataURL))
             let payload = try JSONDecoder().decode(ScheduleLiveResponse.self, from: data)
             apply(payload.toNowPlaying())
-            connectivity = .good
+            setIfChanged(\.connectivity, .good)
         } catch {
-            connectivity = (error as? URLError)?.code == .notConnectedToInternet ? .offline : .weak
+            setIfChanged(\.connectivity, (error as? URLError)?.code == .notConnectedToInternet ? .offline : .weak)
         }
 
         do {
             let (data, _) = try await URLSession.shared.data(for: authorizedRequest(historyURL))
-            history = try JSONDecoder().decode(HistoryResponse.self, from: data).toPlayedTracks()
+            setIfChanged(\.history, try JSONDecoder().decode(HistoryResponse.self, from: data).toPlayedTracks())
         } catch {
             // Keep whatever history we already have rather than flashing it empty.
         }
@@ -158,13 +150,16 @@ final class RadioPlayerModel: ObservableObject {
     }
 
     private func apply(_ payload: (track: NowPlaying, show: LiveShow?)) {
-        nowPlaying = payload.track
-        liveShow = payload.show
-        if let start = payload.track.startedAt {
-            elapsed = Date().timeIntervalSince(start)
-        }
+        let trackChanged = payload.track != nowPlaying
+        setIfChanged(\.nowPlaying, payload.track)
+        setIfChanged(\.liveShow, payload.show)
+        guard trackChanged else { return }
         isCurrentTrackLiked = false // re-query SwiftData for this track id
         updateNowPlayingCentre()
+    }
+
+    private func setIfChanged<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<RadioPlayerModel, Value>, _ value: Value) {
+        if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
     }
 
     // MARK: Now Playing Centre + Live Activity source of truth

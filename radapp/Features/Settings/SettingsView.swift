@@ -65,6 +65,7 @@ struct SettingsView: View {
                                value: cacheBytes.formatted(.byteCount(style: .file)))
                 Button("Clear Cached Artwork", role: .destructive) {
                     URLCache.shared.removeAllCachedResponses()
+                    ArtworkCache.shared.removeAll()
                     cacheBytes = URLCache.shared.currentDiskUsage
                 }
             }

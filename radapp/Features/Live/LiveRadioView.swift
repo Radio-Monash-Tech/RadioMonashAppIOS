@@ -71,7 +71,7 @@ struct LiveRadioView: View {
 
     private var controls: some View {
         VStack(spacing: 20) {
-            VolumeControlBar(volume: $model.volume)
+            VolumeControlBar(initialVolume: model.volume) { model.volume = $0 }
             HStack(spacing: 16) {
                 PlaybackFAB(isPlaying: model.state == .playing, action: model.togglePlayback)
                 FavoriteToggleButton(isFavorite: model.isCurrentTrackLiked) {
