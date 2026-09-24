@@ -2,20 +2,21 @@ import SwiftUI
 
 struct SearchView: View {
     @EnvironmentObject private var player: RadioPlayerModel
+    @EnvironmentObject private var schedule: ScheduleStore
+    @EnvironmentObject private var journalism: JournalismStore
     @State private var query = ""
 
     private var trimmed: String { query.trimmingCharacters(in: .whitespaces) }
 
     private var shows: [ShowSeries] {
-        SampleContent.series.filter {
+        schedule.series.filter {
             $0.title.localizedCaseInsensitiveContains(trimmed)
-                || $0.host.localizedCaseInsensitiveContains(trimmed)
-                || $0.genres.localizedCaseInsensitiveContains(trimmed)
+                || $0.hosts.contains { $0.localizedCaseInsensitiveContains(trimmed) }
         }
     }
 
     private var articles: [Article] {
-        SampleContent.articles.filter {
+        journalism.articles.filter {
             $0.title.localizedCaseInsensitiveContains(trimmed)
                 || $0.author.localizedCaseInsensitiveContains(trimmed)
         }
@@ -44,6 +45,11 @@ struct SearchView: View {
                 }
             }
             .navigationTitle("Search")
+            .task {
+                async let scheduleLoad: Void = schedule.loadIfNeeded()
+                async let articlesLoad: Void = journalism.loadIfNeeded()
+                _ = await (scheduleLoad, articlesLoad)
+            }
             .navigationDestination(for: ShowSeries.self) { ShowDetailView(series: $0) }
             .navigationDestination(for: Article.self) { ArticleView(article: $0) }
         }
@@ -58,9 +64,11 @@ struct SearchView: View {
                         NavigationLink(value: series) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(series.title).font(.body.weight(.semibold))
-                                Text("\(series.host) · \(series.genres)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                if let hosts = series.hostLine {
+                                    Text(hosts)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
                     }
@@ -97,4 +105,6 @@ struct SearchView: View {
 #Preview {
     SearchView()
         .environmentObject(RadioPlayerModel())
+        .environmentObject(ScheduleStore())
+        .environmentObject(JournalismStore())
 }

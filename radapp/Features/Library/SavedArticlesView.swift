@@ -1,15 +1,13 @@
 import SwiftUI
+import SwiftData
 
 struct SavedArticlesView: View {
-    @AppStorage(StoredIDs.savedArticlesKey) private var saved = StoredIDs()
-
-    private var articles: [Article] {
-        SampleContent.articles.filter { saved.contains($0.id) }
-    }
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \SavedArticle.savedAt, order: .reverse) private var savedArticles: [SavedArticle]
 
     var body: some View {
         Group {
-            if articles.isEmpty {
+            if savedArticles.isEmpty {
                 ContentUnavailableView(
                     "No Saved Articles",
                     systemImage: "bookmark",
@@ -17,7 +15,8 @@ struct SavedArticlesView: View {
                 )
             } else {
                 List {
-                    ForEach(articles) { article in
+                    ForEach(savedArticles) { saved in
+                        let article = saved.article
                         NavigationLink(value: article) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(article.title).font(.headline)
@@ -26,7 +25,8 @@ struct SavedArticlesView: View {
                         }
                     }
                     .onDelete { offsets in
-                        for index in offsets { saved.toggle(articles[index].id) }
+                        for index in offsets { modelContext.delete(savedArticles[index]) }
+                        try? modelContext.save()
                     }
                 }
             }

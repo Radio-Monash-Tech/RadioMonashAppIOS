@@ -18,5 +18,4 @@ struct StoredIDs: RawRepresentable {
     }
 
     static let followedShowsKey = "followedShows"
-    static let savedArticlesKey = "savedArticles"
 }

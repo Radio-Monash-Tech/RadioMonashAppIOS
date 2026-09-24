@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Compact now-playing bar docked above the tab bar on every tab.
-/// Tapping it jumps to the Live tab; the button toggles playback in place.
 struct MiniPlayer: View {
     @EnvironmentObject private var player: RadioPlayerModel
     let onOpen: () -> Void

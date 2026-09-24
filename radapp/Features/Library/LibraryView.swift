@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 enum LibraryRoute: Hashable {
     case liked, statistics, savedArticles, followedShows, settings
@@ -6,15 +7,16 @@ enum LibraryRoute: Hashable {
 
 struct LibraryView: View {
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
-    @AppStorage(StoredIDs.savedArticlesKey) private var saved = StoredIDs()
+    @Query private var likedTracks: [FavouriteTrack]
+    @Query private var savedArticles: [SavedArticle]
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    row("Liked Songs", systemImage: "heart.fill", route: .liked)
+                    row("Liked Songs", systemImage: "heart.fill", route: .liked, count: likedTracks.count)
                     row("Listening Statistics", systemImage: "chart.bar.fill", route: .statistics)
-                    row("Saved Articles", systemImage: "bookmark.fill", route: .savedArticles, count: saved.ids.count)
+                    row("Saved Articles", systemImage: "bookmark.fill", route: .savedArticles, count: savedArticles.count)
                     row("Followed Shows", systemImage: "bell.fill", route: .followedShows, count: followed.ids.count)
                 }
                 Section {
@@ -53,4 +55,6 @@ struct LibraryView: View {
 #Preview {
     LibraryView()
         .environmentObject(RadioPlayerModel())
+        .environmentObject(ScheduleStore())
+        .modelContainer(for: [FavouriteTrack.self, SavedArticle.self], inMemory: true)
 }

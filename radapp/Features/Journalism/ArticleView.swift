@@ -1,24 +1,27 @@
 import SwiftUI
+import SwiftData
 
 struct ArticleView: View {
     let article: Article
 
-    @AppStorage(StoredIDs.savedArticlesKey) private var saved = StoredIDs()
+    @Environment(\.modelContext) private var modelContext
+    @Query private var savedArticles: [SavedArticle]
     @AppStorage("readerTextSize") private var textSize: ReaderTextSize = .standard
+    @State private var blocks: [ArticleBlock]?
 
-    private var isSaved: Bool { saved.contains(article.id) }
+    private var savedCopy: SavedArticle? {
+        savedArticles.first { $0.articleID == article.id }
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                ArtworkImage(url: nil)
-                    .aspectRatio(16 / 10, contentMode: .fit)
+                if let imageURL = article.imageURL {
+                    ArtworkImage(url: imageURL.squarespaceSized(1500))
+                        .aspectRatio(16 / 10, contentMode: .fit)
+                }
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(article.isFeature ? "FEATURE" : article.category.rawValue.uppercased())
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.tint)
-
                     Text(article.title)
                         .font(.system(.title, design: .serif, weight: .bold))
 
@@ -36,18 +39,26 @@ struct ArticleView: View {
                     }
                     .accessibilityElement(children: .combine)
 
-                    ForEach(article.body, id: \.self) { paragraph in
-                        Text(paragraph)
-                            .font(.system(.body, design: .serif))
-                            .lineSpacing(5)
+                    if let blocks {
+                        ForEach(blocks.indices, id: \.self) { index in
+                            ArticleBlockView(block: blocks[index])
+                        }
+                        .dynamicTypeSize(textSize.dynamicTypeSize)
+                    } else {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 24)
                     }
-                    .dynamicTypeSize(textSize.dynamicTypeSize)
                 }
                 .padding(.horizontal, 20)
             }
             .padding(.bottom, 32)
         }
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            guard blocks == nil else { return }
+            blocks = contentBlocks()
+        }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Menu {
@@ -60,17 +71,86 @@ struct ArticleView: View {
                     Label("Text Size", systemImage: "textformat.size")
                 }
 
-                Button {
-                    saved.toggle(article.id)
-                } label: {
-                    Label(isSaved ? "Remove from Saved" : "Save Article",
-                          systemImage: isSaved ? "bookmark.fill" : "bookmark")
+                Button(action: toggleSaved) {
+                    Label(savedCopy == nil ? "Save Article" : "Remove from Saved",
+                          systemImage: savedCopy == nil ? "bookmark" : "bookmark.fill")
                 }
+                .sensoryFeedback(.success, trigger: savedCopy != nil) { _, isSaved in isSaved }
 
-                if let url = URL(string: "https://www.radiomonash.online/") {
-                    ShareLink(item: url, subject: Text(article.title), message: Text(article.title))
+                ShareLink(
+                    item: article.webURL ?? SquarespaceClient.siteURL,
+                    subject: Text(article.title),
+                    message: Text(article.title)
+                )
+            }
+        }
+    }
+
+    private func contentBlocks() -> [ArticleBlock] {
+        let heroKey = article.imageURL?.absoluteString.components(separatedBy: "?").first
+        return ArticleHTMLParser.blocks(from: article.bodyHTML).filter { block in
+            guard case .image(let url, nil) = block else { return true }
+            return url.absoluteString.components(separatedBy: "?").first != heroKey
+        }
+    }
+
+    private func toggleSaved() {
+        modelContext.toggleSaved(article, existing: savedCopy)
+    }
+}
+
+private struct ArticleBlockView: View {
+    let block: ArticleBlock
+
+    var body: some View {
+        switch block {
+        case .paragraph(let text):
+            Text(text)
+                .font(.system(.body, design: .serif))
+                .lineSpacing(5)
+        case .heading(let text, let level):
+            Text(text)
+                .font(.system(level == 1 ? .title2 : level == 2 ? .title3 : .headline, design: .serif, weight: .bold))
+                .padding(.top, 8)
+        case .quote(let text):
+            Text(text)
+                .font(.system(.title3, design: .serif))
+                .italic()
+                .padding(.leading, 14)
+                .overlay(alignment: .leading) {
+                    Rectangle().fill(.tint).frame(width: 3)
+                }
+        case .listItem(let text, let marker):
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(marker).monospacedDigit()
+                Text(text)
+            }
+            .font(.system(.body, design: .serif))
+            .lineSpacing(5)
+        case .image(let url, let caption):
+            VStack(alignment: .leading, spacing: 6) {
+                CachedArtwork(url: url.squarespaceSized(1000)) { image in
+                    image.resizable().scaledToFit()
+                } placeholder: {
+                    Rectangle()
+                        .fill(.fill.tertiary)
+                        .frame(height: 220)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                if let caption {
+                    if caption.characters.count > 140 {
+                        Text(caption)
+                            .font(.system(.body, design: .serif))
+                            .lineSpacing(5)
+                            .padding(.top, 6)
+                    } else {
+                        Text(caption)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
+            .padding(.vertical, 4)
         }
     }
 }
@@ -100,6 +180,7 @@ enum ReaderTextSize: String, CaseIterable, Identifiable {
 
 #Preview {
     NavigationStack {
-        ArticleView(article: SampleContent.articles[0])
+        ArticleView(article: .placeholder(0))
     }
+    .modelContainer(for: SavedArticle.self, inMemory: true)
 }

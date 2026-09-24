@@ -103,15 +103,129 @@ struct HistoryEntry: Decodable {
 
 extension HistoryResponse {
     func toPlayedTracks() -> [PlayedTrack] {
-        let formatter = ISO8601DateFormatter()
-        return data.map { entry in
+        data.map { entry in
             PlayedTrack(
                 id: entry.playoutStart,
                 title: entry.title,
                 artist: entry.artist ?? "Radio Monash",
-                playedAt: formatter.date(from: entry.playoutStart) ?? Date(),
+                playedAt: RadioCultDate.parse(entry.playoutStart) ?? Date(),
                 artworkURL: entry.artwork?.best(preferring: ["256x256", "default", "original"])
             )
         }
+    }
+}
+
+// MARK: - Wire format: GET /api/station/:stationId/schedule
+
+struct ScheduleResponse: Decodable {
+    let schedules: [ScheduleEvent]
+}
+
+struct ScheduleEvent: Decodable {
+    let id: String
+    let originalId: String?
+    let title: String
+    let startDateUtc: String
+    let endDateUtc: String
+    let description: TipTapNode?
+    let artists: [ScheduleArtist]
+
+    private enum CodingKeys: String, CodingKey {
+        case id, originalId, title, startDateUtc, endDateUtc, description, artists
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        originalId = try container.decodeIfPresent(String.self, forKey: .originalId)
+        title = try container.decode(String.self, forKey: .title)
+        startDateUtc = try container.decode(String.self, forKey: .startDateUtc)
+        endDateUtc = try container.decode(String.self, forKey: .endDateUtc)
+        description = try? container.decodeIfPresent(TipTapNode.self, forKey: .description)
+        artists = (try? container.decodeIfPresent([ScheduleArtist].self, forKey: .artists)) ?? []
+    }
+}
+
+struct ScheduleArtist: Decodable {
+    let id: String
+    let name: String
+}
+
+struct TipTapNode: Decodable {
+    let type: String
+    let text: String?
+    let marks: [TipTapMark]?
+    let content: [TipTapNode]?
+}
+
+struct TipTapMark: Decodable {
+    struct Attributes: Decodable {
+        let href: String?
+    }
+
+    let type: String
+    let attrs: Attributes?
+}
+
+extension TipTapNode {
+    var attributedText: AttributedString {
+        switch type {
+        case "text":
+            var run = AttributedString(text ?? "")
+            var intent = InlinePresentationIntent()
+            for mark in marks ?? [] {
+                switch mark.type {
+                case "bold": intent.insert(.stronglyEmphasized)
+                case "italic": intent.insert(.emphasized)
+                case "code": intent.insert(.code)
+                case "strike": intent.insert(.strikethrough)
+                case "link": run.link = mark.attrs?.href.flatMap(URL.init(string:))
+                default: break
+                }
+            }
+            if !intent.isEmpty { run.inlinePresentationIntent = intent }
+            return run
+        case "hardBreak":
+            return AttributedString("\n")
+        case "listItem":
+            return AttributedString("• ") + children(separatedBy: "\n")
+        case "doc", "blockquote":
+            return children(separatedBy: "\n\n")
+        case "bulletList", "orderedList":
+            return children(separatedBy: "\n")
+        default:
+            return children(separatedBy: "")
+        }
+    }
+
+    private func children(separatedBy separator: String) -> AttributedString {
+        let parts = (content ?? []).map(\.attributedText).filter { !$0.characters.isEmpty }
+        var result = AttributedString()
+        for (index, part) in parts.enumerated() {
+            if index > 0 { result += AttributedString(separator) }
+            result += part
+        }
+        return result
+    }
+}
+
+extension ScheduleResponse {
+    func toScheduledShows() -> [ScheduledShow] {
+        schedules.compactMap { event in
+            guard let start = RadioCultDate.parse(event.startDateUtc),
+                  let end = RadioCultDate.parse(event.endDateUtc),
+                  end > start
+            else { return nil }
+
+            let summary = event.description?.attributedText
+            let series = ShowSeries(
+                id: event.originalId ?? event.id,
+                title: event.title.trimmingCharacters(in: .whitespacesAndNewlines),
+                hosts: event.artists.map(\.name),
+                summary: summary.flatMap { $0.characters.isEmpty ? nil : $0 }
+            )
+            return ScheduledShow(id: event.id, series: series, start: start, end: end)
+        }
+        .sorted { $0.start < $1.start }
     }
 }

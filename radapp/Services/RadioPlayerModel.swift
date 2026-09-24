@@ -2,6 +2,7 @@ import SwiftUI
 import AVFoundation
 import MediaPlayer
 import Combine
+import SwiftData
 
 @MainActor
 final class RadioPlayerModel: ObservableObject {
@@ -14,20 +15,22 @@ final class RadioPlayerModel: ObservableObject {
     var volume: Float = 0.72 { didSet { player?.volume = volume } }
     @Published private(set) var isCurrentTrackLiked = false
 
-    /// RadioCult stream + metadata endpoints for the station.
+    /// RadioCult stream for the station.
     private let streamURL = URL(string: "https://radio-monash.radiocult.fm/stream")!
-    private let metadataURL = URL(string: "https://api.radiocult.fm/api/station/radio-monash/schedule/live")!
-    private let historyURL = URL(string: "https://api.radiocult.fm/api/station/radio-monash/streaming/history/latest-results?limit=5")!
 
-    /// Publishable (read-only) key — safe for client distribution per RadioCult's docs.
-    /// TODO: move to a gitignored config file before this repo goes public.
-    private let apiKey = "pk_4bf03d42acb4441c96c73e33c8b22491"
+    private let client = RadioCultClient.shared
+    private let modelContext: ModelContext?
 
     private var player: AVPlayer?
     private var metadataTimer: AnyCancellable?
     private var statusObservation: NSKeyValueObservation?
 
+    init(modelContext: ModelContext? = nil) {
+        self.modelContext = modelContext
+    }
+
     var isOnAir: Bool { liveShow != nil }
+    var canLikeCurrentTrack: Bool { modelContext != nil && nowPlaying != .offAir }
     var isBusy: Bool { state == .connecting }
 
     var elapsed: TimeInterval {
@@ -112,8 +115,45 @@ final class RadioPlayerModel: ObservableObject {
     func retry() { play() }
 
     func toggleLike() {
-        isCurrentTrackLiked.toggle()
-        // Persist to SwiftData alongside the show it played on.
+        guard canLikeCurrentTrack else { return }
+        toggleFavourite(title: nowPlaying.title, artist: nowPlaying.artist,
+                        artworkURL: nowPlaying.artworkURL, showName: liveShow?.name)
+    }
+
+    func toggleLike(_ track: PlayedTrack, showName: String?) {
+        toggleFavourite(title: track.title, artist: track.artist,
+                        artworkURL: track.artworkURL, showName: showName)
+    }
+
+    private func toggleFavourite(title: String, artist: String, artworkURL: URL?, showName: String?) {
+        guard let modelContext else { return }
+        if let existing = favourite(key: FavouriteTrack.key(title: title, artist: artist)) {
+            modelContext.delete(existing)
+        } else {
+            modelContext.insert(FavouriteTrack(title: title, artist: artist, artworkURL: artworkURL, showName: showName))
+        }
+        try? modelContext.save()
+        refreshLikeState()
+    }
+
+    func unlike(_ track: FavouriteTrack) {
+        guard let modelContext else { return }
+        modelContext.delete(track)
+        try? modelContext.save()
+        refreshLikeState()
+    }
+
+    private func favourite(key: String) -> FavouriteTrack? {
+        guard let modelContext else { return nil }
+        var descriptor = FetchDescriptor<FavouriteTrack>(predicate: #Predicate { $0.key == key })
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
+    }
+
+    private func refreshLikeState() {
+        let key = FavouriteTrack.key(title: nowPlaying.title, artist: nowPlaying.artist)
+        setIfChanged(\.isCurrentTrackLiked, favourite(key: key) != nil)
+        MPRemoteCommandCenter.shared().likeCommand.isActive = isCurrentTrackLiked
     }
 
     // MARK: Metadata
@@ -127,26 +167,17 @@ final class RadioPlayerModel: ObservableObject {
 
     func refreshMetadata() async {
         do {
-            let (data, _) = try await URLSession.shared.data(for: authorizedRequest(metadataURL))
-            let payload = try JSONDecoder().decode(ScheduleLiveResponse.self, from: data)
-            apply(payload.toNowPlaying())
+            apply(try await client.liveStatus().toNowPlaying())
             setIfChanged(\.connectivity, .good)
         } catch {
             setIfChanged(\.connectivity, (error as? URLError)?.code == .notConnectedToInternet ? .offline : .weak)
         }
 
         do {
-            let (data, _) = try await URLSession.shared.data(for: authorizedRequest(historyURL))
-            setIfChanged(\.history, try JSONDecoder().decode(HistoryResponse.self, from: data).toPlayedTracks())
+            setIfChanged(\.history, try await client.history(limit: 5).toPlayedTracks())
         } catch {
             // Keep whatever history we already have rather than flashing it empty.
         }
-    }
-
-    private func authorizedRequest(_ url: URL) -> URLRequest {
-        var request = URLRequest(url: url)
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        return request
     }
 
     private func apply(_ payload: (track: NowPlaying, show: LiveShow?)) {
@@ -154,7 +185,7 @@ final class RadioPlayerModel: ObservableObject {
         setIfChanged(\.nowPlaying, payload.track)
         setIfChanged(\.liveShow, payload.show)
         guard trackChanged else { return }
-        isCurrentTrackLiked = false // re-query SwiftData for this track id
+        refreshLikeState()
         updateNowPlayingCentre()
     }
 

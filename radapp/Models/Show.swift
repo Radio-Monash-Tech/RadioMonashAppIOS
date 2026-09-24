@@ -3,25 +3,27 @@ import Foundation
 struct ShowSeries: Identifiable, Hashable {
     let id: String
     var title: String
-    var host: String
-    var genres: String
-    var summary: String
-    var startHour: Int
-    var durationHours: Int
+    var hosts: [String]
+    var summary: AttributedString?
 
-    var timeslot: String {
-        String(format: "%02d:00 – %02d:00", startHour, (startHour + durationHours) % 24)
+    var hostLine: String? {
+        hosts.isEmpty ? nil : ListFormatter.localizedString(byJoining: hosts)
     }
 }
 
 struct ScheduledShow: Identifiable, Hashable {
+    let id: String
     let series: ShowSeries
     let start: Date
     let end: Date
 
-    var id: String { "\(series.id)-\(Int(start.timeIntervalSince1970))" }
-
     func isOnAir(at date: Date = .now) -> Bool { start <= date && date < end }
+
+    var timeRange: String { "\(Self.clock(start)) – \(Self.clock(end))" }
+
+    var dayLabel: String {
+        start.formatted(Date.FormatStyle(timeZone: Calendar.melbourne.timeZone).weekday(.abbreviated).day().month(.abbreviated))
+    }
 
     static func clock(_ date: Date) -> String { clockFormatter.string(from: date) }
 

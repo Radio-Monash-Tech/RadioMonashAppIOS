@@ -313,47 +313,31 @@ private struct FloatingHeart: View {
 
 // MARK: - Recently played
 
-struct RecentlyPlayedSection: View {
-    let tracks: [PlayedTrack]
+struct RecentlyPlayedHeader: View {
+    let showsSeeAll: Bool
+    let onSeeAll: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Played earlier")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.primary)
-                Spacer()
-                if !tracks.isEmpty {
-                    NavigationLink("See all", value: LiveRoute.history)
-                        .font(.subheadline)
-                }
-            }
-            .padding(.horizontal, 24)
-
-            if tracks.isEmpty {
-                Text("Track history appears here once the station reports it.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 24)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(tracks) { track in
-                        RecentlyPlayedRow(track: track)
-                        if track.id != tracks.last?.id {
-                            Divider()
-                                .padding(.leading, 24 + 48 + 12)
-                        }
-                    }
-                }
+        HStack(alignment: .firstTextBaseline) {
+            Text("Played earlier")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.primary)
+            Spacer()
+            if showsSeeAll {
+                Button("See all", action: onSeeAll)
+                    .font(.subheadline)
+                    .buttonStyle(.borderless)
             }
         }
+        .padding(.horizontal, 24)
         .padding(.top, 28)
-        .padding(.bottom, 40)
+        .padding(.bottom, 4)
     }
 }
 
-private struct RecentlyPlayedRow: View {
+struct RecentlyPlayedRow: View {
     let track: PlayedTrack
+    let isLiked: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -372,11 +356,18 @@ private struct RecentlyPlayedRow: View {
                     .lineLimit(1)
             }
             Spacer()
+            if isLiked {
+                Image(systemName: "heart.fill")
+                    .font(.caption)
+                    .foregroundStyle(PlayerPalette.error)
+                    .accessibilityLabel("Liked")
+            }
             Text(track.playedAt, style: .time)
                 .font(.system(size: 11.5, design: .monospaced))
                 .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
     }
 }
