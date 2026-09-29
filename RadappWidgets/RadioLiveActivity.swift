@@ -49,7 +49,7 @@ private struct LockScreenView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Circle().fill(accent).frame(width: 7, height: 7)
-                Text(state.isPlaying ? "RADMON RADIO · LIVE" : "RADMON RADIO · PAUSED")
+                Text(state.isPlaying ? "RADIO MONASH · LIVE" : "RADMON RADIO · PAUSED")
                     .font(.caption.weight(.bold))
                     .kerning(1.5)
                     .foregroundStyle(accent)

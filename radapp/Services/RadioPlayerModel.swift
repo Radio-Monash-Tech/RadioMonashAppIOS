@@ -1,6 +1,5 @@
 import SwiftUI
 import AVFoundation
-import MediaPlayer
 import Combine
 import SwiftData
 
@@ -74,14 +73,15 @@ final class RadioPlayerModel: ObservableObject {
     func prepareSession() {
         let session = AVAudioSession.sharedInstance()
         do {
-            // .playback keeps audio alive when the screen locks and honours
-            // the silent switch the way a radio should.
-            try session.setCategory(.playback, mode: .default, policy: .longFormAudio)
+            // .playback keeps audio alive when the screen locks and ignores
+            // the silent switch the way a radio should. .mixWithOthers keeps
+            // iOS from adopting us as the Now Playing app, so the Live
+            // Activity is the only Lock Screen player.
+            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try session.setActive(true)
         } catch {
             state = .failed("Couldn't start audio session.")
         }
-        configureRemoteCommands()
         LiveActivityActions.togglePlayback = { [weak self] in self?.togglePlayback() }
         LiveActivityActions.toggleLike = { [weak self] in self?.toggleLike() }
         startMetadataPolling()
@@ -102,7 +102,7 @@ final class RadioPlayerModel: ObservableObject {
         case .connecting:
             break
         }
-        updateNowPlayingCentre()
+        refreshLiveActivity()
     }
 
     func play() {
@@ -128,7 +128,7 @@ final class RadioPlayerModel: ObservableObject {
                 default:
                     break
                 }
-                self.updateNowPlayingCentre()
+                self.refreshLiveActivity()
             }
         }
     }
@@ -174,7 +174,6 @@ final class RadioPlayerModel: ObservableObject {
     private func refreshLikeState() {
         let key = FavouriteTrack.key(title: nowPlaying.title, artist: nowPlaying.artist)
         setIfChanged(\.isCurrentTrackLiked, favourite(key: key) != nil)
-        MPRemoteCommandCenter.shared().likeCommand.isActive = isCurrentTrackLiked
         refreshLiveActivity()
     }
 
@@ -208,47 +207,13 @@ final class RadioPlayerModel: ObservableObject {
         setIfChanged(\.liveShow, payload.show)
         guard changed else { return }
         refreshLikeState()
-        updateNowPlayingCentre()
     }
 
     private func setIfChanged<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<RadioPlayerModel, Value>, _ value: Value) {
         if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
     }
 
-    // MARK: Now Playing Centre + Live Activity source of truth
-
-    private func configureRemoteCommands() {
-        let centre = MPRemoteCommandCenter.shared()
-        centre.playCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.play() }
-            return .success
-        }
-        centre.pauseCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.togglePlayback() }
-            return .success
-        }
-        centre.likeCommand.isEnabled = true
-        centre.likeCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.toggleLike() }
-            return .success
-        }
-        // Live radio isn't scrubbable — don't advertise controls that lie.
-        centre.skipForwardCommand.isEnabled = false
-        centre.skipBackwardCommand.isEnabled = false
-        centre.changePlaybackPositionCommand.isEnabled = false
-    }
-
-    private func updateNowPlayingCentre() {
-        var info: [String: Any] = [
-            MPMediaItemPropertyTitle: displayTitle,
-            MPMediaItemPropertyArtist: displayArtist ?? "Radio Monash",
-            MPNowPlayingInfoPropertyIsLiveStream: true,
-            MPNowPlayingInfoPropertyPlaybackRate: state == .playing ? 1.0 : 0.0
-        ]
-        if let show = liveShow { info[MPMediaItemPropertyAlbumTitle] = show.name }
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
-        refreshLiveActivity()
-    }
+    // MARK: Live Activity
 
     /// Pushes the current state to the Lock Screen Live Activity. Also called
     /// by Settings when the Live Activity toggle changes.
