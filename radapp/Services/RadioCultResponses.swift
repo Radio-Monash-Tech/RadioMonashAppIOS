@@ -49,6 +49,21 @@ struct LiveMetadata: Decodable {
     let duration: Double?
     let playoutStartUnixTimestamp: Double?
     let artwork: ArtworkVariants?
+
+    private enum CodingKeys: String, CodingKey {
+        case title, artist, album, duration, playoutStartUnixTimestamp, artwork
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        title = try container.decode(String.self, forKey: .title)
+        artist = try container.decodeIfPresent(String.self, forKey: .artist)
+        album = try container.decodeIfPresent(String.self, forKey: .album)
+        // Live shows report `"duration": "unknown"` rather than a number.
+        duration = try? container.decodeIfPresent(Double.self, forKey: .duration)
+        playoutStartUnixTimestamp = try container.decodeIfPresent(Double.self, forKey: .playoutStartUnixTimestamp)
+        artwork = try container.decodeIfPresent(ArtworkVariants.self, forKey: .artwork)
+    }
 }
 
 /// RadioCult returns artwork as a map of size label ("32x32", "default",
@@ -72,7 +87,10 @@ struct ArtworkVariants: Decodable {
 
 extension ScheduleLiveResponse {
     func toNowPlaying() -> (track: NowPlaying, show: LiveShow?) {
-        guard let metadata else { return (.offAir, nil) }
+        let show = result.show.map { LiveShow(name: $0.title, host: nil, endsAt: nil) }
+        // During a live show the stream sends either nothing or the show's
+        // own name with no artist; neither is a real track, so keep only the show.
+        guard let metadata, show == nil || metadata.artist != nil else { return (.offAir, show) }
         let track = NowPlaying(
             title: metadata.title,
             artist: metadata.artist ?? "Radio Monash",
@@ -80,7 +98,6 @@ extension ScheduleLiveResponse {
             startedAt: metadata.playoutStartUnixTimestamp.map(Date.init(timeIntervalSince1970:)),
             duration: metadata.duration
         )
-        let show = result.show.map { LiveShow(name: $0.title, host: nil, endsAt: nil) }
         return (track, show)
     }
 

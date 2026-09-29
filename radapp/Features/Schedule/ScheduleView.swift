@@ -75,7 +75,7 @@ struct ScheduleView: View {
                 NavigationLink(value: show.series) {
                     ScheduleRow(show: show, isOnAir: isOnAir, isFollowed: isFollowed)
                 }
-                .listRowBackground(isOnAir ? PlayerPalette.live.opacity(0.12) : nil)
+                .listRowBackground(isOnAir ? Brand.accent.opacity(0.12) : nil)
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button {
                         followed.toggle(show.series.id)
@@ -83,7 +83,7 @@ struct ScheduleView: View {
                         Label(isFollowed ? "Unfollow" : "Follow",
                               systemImage: isFollowed ? "bell.slash.fill" : "bell.fill")
                     }
-                    .tint(isFollowed ? .gray : .orange)
+                    .tint(isFollowed ? .gray : Brand.accent)
                 }
             }
             .sensoryFeedback(.success, trigger: followed.ids.count)
@@ -156,7 +156,7 @@ private struct ScheduleRow: View {
                     if isFollowed {
                         Image(systemName: "bell.fill")
                             .font(.caption)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Brand.accent)
                             .accessibilityLabel("Following")
                     }
                 }
@@ -189,10 +189,10 @@ struct OnAirBadge: View {
     var body: some View {
         Text("ON AIR")
             .font(.caption2.weight(.bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.onAccent)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(PlayerPalette.live, in: Capsule())
+            .background(Brand.accent, in: Capsule())
             .accessibilityLabel("On air now")
     }
 }

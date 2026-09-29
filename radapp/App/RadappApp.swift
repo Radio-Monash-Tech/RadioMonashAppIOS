@@ -7,13 +7,14 @@
 
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 @main
 struct radappApp: App {
     /// One player for the whole app so the stream survives tab switches and
     /// the mini player and Live tab always show the same state.
     @StateObject private var player: RadioPlayerModel
-    @StateObject private var schedule = ScheduleStore()
+    @StateObject private var schedule: ScheduleStore
     @StateObject private var journalism = JournalismStore()
     private let container: ModelContainer
 
@@ -25,7 +26,10 @@ struct radappApp: App {
             fatalError("Couldn't open the local database: \(error)")
         }
         self.container = container
-        _player = StateObject(wrappedValue: RadioPlayerModel(modelContext: container.mainContext))
+        let schedule = ScheduleStore()
+        _schedule = StateObject(wrappedValue: schedule)
+        _player = StateObject(wrappedValue: RadioPlayerModel(modelContext: container.mainContext, schedule: schedule))
+        UNUserNotificationCenter.current().delegate = ForegroundNotificationPresenter.shared
     }
 
     var body: some Scene {

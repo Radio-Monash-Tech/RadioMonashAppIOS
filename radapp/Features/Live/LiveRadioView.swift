@@ -15,7 +15,7 @@ struct LiveRadioView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ZStack {
-                ArtworkBackgroundLayer(url: model.nowPlaying.artworkURL)
+                ArtworkBackgroundLayer(url: model.isOnAir ? nil : model.nowPlaying.artworkURL)
 
                 GeometryReader { viewport in
                     List {
@@ -41,7 +41,7 @@ struct LiveRadioView: View {
 
                 HeartBurstOverlay(trigger: likeBurstTrigger)
             }
-            .navigationTitle("Radio Monash")
+            .navigationTitle(model.liveShow?.name ?? "Radio Monash")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -103,11 +103,12 @@ struct LiveRadioView: View {
 
             GlowingArtwork(
                 url: model.nowPlaying.artworkURL,
+                showsStationLogo: model.isOnAir,
                 isBusy: model.isBusy,
                 onDoubleTap: { showingPlatformSheet = true }
             )
             Spacer().frame(height: 32)
-            MetadataDisplay(state: model.state, nowPlaying: model.nowPlaying, onRetry: model.retry)
+            MetadataDisplay(state: model.state, title: model.displayTitle, artist: model.displayArtist, onRetry: model.retry)
 
             Spacer(minLength: 0)
 
@@ -117,7 +118,7 @@ struct LiveRadioView: View {
 
     private var controls: some View {
         VStack(spacing: 20) {
-            VolumeControlBar(initialVolume: model.volume) { model.volume = $0 }
+            VolumeControlBar(isMuted: model.isMuted) { model.isMuted = $0 }
             HStack(spacing: 16) {
                 PlaybackFAB(isPlaying: model.state == .playing, action: model.togglePlayback)
                 FavoriteToggleButton(isFavorite: model.isCurrentTrackLiked) {

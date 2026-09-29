@@ -6,18 +6,26 @@ struct MiniPlayer: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ArtworkImage(url: player.nowPlaying.artworkURL)
+            Group {
+                if player.isOnAir {
+                    Image(.stationLogo).resizable().scaledToFill()
+                } else {
+                    ArtworkImage(url: player.nowPlaying.artworkURL)
+                }
+            }
                 .frame(width: 32, height: 32)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
             VStack(alignment: .leading, spacing: 0) {
-                Text(player.nowPlaying.title)
+                Text(player.displayTitle)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                Text(player.liveShow?.billing ?? player.nowPlaying.artist)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                if let artist = player.displayArtist {
+                    Text(player.liveShow?.billing ?? artist)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
 
             Spacer(minLength: 8)

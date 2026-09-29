@@ -76,7 +76,7 @@ struct JournalismView: View {
                         Label(savedCopy == nil ? "Save" : "Unsave",
                               systemImage: savedCopy == nil ? "bookmark.fill" : "bookmark.slash.fill")
                     }
-                    .tint(savedCopy == nil ? .orange : .gray)
+                    .tint(savedCopy == nil ? Brand.accent : .gray)
                 }
                 .onAppear {
                     if article.id == journalism.articles.last?.id {

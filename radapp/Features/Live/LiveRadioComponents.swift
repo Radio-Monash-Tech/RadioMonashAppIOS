@@ -1,4 +1,6 @@
 import SwiftUI
+import AVFoundation
+import MediaPlayer
 
 // MARK: - Background
 
@@ -38,7 +40,7 @@ struct ConnectionQualityBadge: View {
 
     private var color: Color {
         switch connectivity {
-        case .good: return PlayerPalette.live
+        case .good: return Brand.accent
         case .weak: return PlayerPalette.warn
         case .offline: return PlayerPalette.error
         }
@@ -79,6 +81,8 @@ struct ConnectionQualityBadge: View {
 
 struct GlowingArtwork: View {
     let url: URL?
+    /// While a show is live the cover shows the station logo, not track art.
+    var showsStationLogo = false
     let isBusy: Bool
     let onDoubleTap: () -> Void
     @State private var glow = false
@@ -92,7 +96,13 @@ struct GlowingArtwork: View {
                 ))
                 .padding(-4)
 
-            ArtworkImage(url: url)
+            Group {
+                if showsStationLogo {
+                    Image(.stationLogo).resizable().scaledToFill()
+                } else {
+                    ArtworkImage(url: url)
+                }
+            }
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
                 .onTapGesture(count: 2, perform: onDoubleTap)
@@ -116,7 +126,8 @@ struct GlowingArtwork: View {
 
 struct MetadataDisplay: View {
     let state: StreamState
-    let nowPlaying: NowPlaying
+    let title: String
+    let artist: String?
     let onRetry: () -> Void
 
     var body: some View {
@@ -125,17 +136,19 @@ struct MetadataDisplay: View {
                 errorState(message)
             } else {
                 VStack(spacing: 12) {
-                    Text(nowPlaying.title)
+                    Text(title)
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
-                        .animation(.default, value: nowPlaying.title)
-                    Text(nowPlaying.artist)
-                        .font(.system(size: 17))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .animation(.default, value: nowPlaying.artist)
+                        .animation(.default, value: title)
+                    if let artist {
+                        Text(artist)
+                            .font(.system(size: 17))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .animation(.default, value: artist)
+                    }
                 }
             }
         }
@@ -168,40 +181,66 @@ struct MetadataDisplay: View {
 // MARK: - Transport
 
 struct VolumeControlBar: View {
-    @State private var volume: Float
-    @State private var lastVolume: Float = 1
-    private let onChange: (Float) -> Void
+    @State private var isMuted: Bool
+    @State private var systemVolume = AVAudioSession.sharedInstance().outputVolume
+    private let onMuteChange: (Bool) -> Void
 
-    init(initialVolume: Float, onChange: @escaping (Float) -> Void) {
-        _volume = State(initialValue: initialVolume)
-        self.onChange = onChange
+    init(isMuted: Bool, onMuteChange: @escaping (Bool) -> Void) {
+        _isMuted = State(initialValue: isMuted)
+        self.onMuteChange = onMuteChange
     }
+
+    private var isSilent: Bool { isMuted || systemVolume == 0 }
 
     var body: some View {
         HStack(spacing: 16) {
             Button {
-                if volume > 0 {
-                    lastVolume = volume
-                    volume = 0
-                } else {
-                    volume = lastVolume > 0 ? lastVolume : 1
-                }
+                isMuted.toggle()
             } label: {
-                Image(systemName: volume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                Image(systemName: isSilent ? "speaker.slash.fill" : "speaker.wave.2.fill")
                     .foregroundStyle(.primary)
                     .frame(width: 48, height: 48)
                     .background(.fill.tertiary, in: Circle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(volume == 0 ? "Unmute" : "Mute")
+            .accessibilityLabel(isMuted ? "Unmute" : "Mute")
 
-            Slider(value: $volume, in: 0...1)
-                .tint(.primary)
+            // Drives the device's system volume, so it stays in sync with the hardware buttons.
+            SystemVolumeSlider()
+                .frame(height: 34)
+                .opacity(isMuted ? 0.4 : 1)
                 .accessibilityLabel("Volume")
         }
-        .onChange(of: volume) { _, newValue in onChange(newValue) }
+        .onChange(of: isMuted) { _, newValue in onMuteChange(newValue) }
+        .onReceive(AVAudioSession.sharedInstance().publisher(for: \.outputVolume)) { systemVolume = $0 }
     }
 }
+
+#if targetEnvironment(simulator)
+/// `MPVolumeView` draws nothing in the Simulator, which has no device volume
+/// to control, so the Simulator gets a plain slider for the stream's volume.
+private struct SystemVolumeSlider: View {
+    @EnvironmentObject private var player: RadioPlayerModel
+    @State private var volume: Float = 1
+
+    var body: some View {
+        Slider(value: $volume, in: 0...1)
+            .tint(.primary)
+            .onAppear { volume = player.volume }
+            .onChange(of: volume) { _, newValue in player.volume = newValue }
+    }
+}
+#else
+private struct SystemVolumeSlider: UIViewRepresentable {
+    func makeUIView(context: Context) -> MPVolumeView {
+        let view = MPVolumeView()
+        view.tintColor = .label
+        return view
+    }
+
+    func updateUIView(_ uiView: MPVolumeView, context: Context) {}
+}
+#endif
 
 struct PlaybackFAB: View {
     let isPlaying: Bool

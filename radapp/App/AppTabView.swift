@@ -19,6 +19,8 @@ struct AppTabView: View {
     @EnvironmentObject private var schedule: ScheduleStore
     @EnvironmentObject private var journalism: JournalismStore
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
+    @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
+    @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @State private var selection: AppTab = .live
 
     var body: some View {
@@ -47,7 +49,17 @@ struct AppTabView: View {
             async let articlesLoad: Void = journalism.loadIfNeeded()
             _ = await (scheduleLoad, articlesLoad)
         }
+        .task(id: ReminderInputs(shows: schedule.shows, followed: followed.rawValue, isEnabled: showReminders)) {
+            await ShowReminderScheduler.sync(shows: schedule.shows, followed: followed, isEnabled: showReminders)
+        }
     }
+}
+
+/// Everything the reminder schedule depends on; a change to any of them reschedules.
+private struct ReminderInputs: Equatable {
+    let shows: [ScheduledShow]
+    let followed: String
+    let isEnabled: Bool
 }
 
 private struct MiniPlayerAccessory: ViewModifier {

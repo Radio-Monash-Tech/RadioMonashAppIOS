@@ -4,10 +4,11 @@ struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @AppStorage("sleepTimerMinutes") private var sleepTimerMinutes = 0
     @AppStorage("resumeOnLaunch") private var resumeOnLaunch = true
-    @AppStorage("liveActivityEnabled") private var liveActivityEnabled = true
-    @AppStorage("showReminders") private var showReminders = true
+    @AppStorage(LiveActivityController.enabledKey) private var liveActivityEnabled = true
+    @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @AppStorage("newArticleAlerts") private var newArticleAlerts = false
 
+    @EnvironmentObject private var player: RadioPlayerModel
     @Environment(\.colorScheme) private var colorScheme
     @State private var cacheBytes = URLCache.shared.currentDiskUsage
 
@@ -30,7 +31,7 @@ struct SettingsView: View {
                 Text("Appearance")
             } footer: {
                 if appearance == .system {
-                    Text("Following iOS appearance — currently \(colorScheme == .dark ? "dark" : "light").")
+                    Text("Following iOS appearance,  currently \(colorScheme == .dark ? "dark" : "light").")
                 }
             }
 
@@ -50,6 +51,7 @@ struct SettingsView: View {
                     Text("Live Activity")
                     Text("Show now playing on the Lock Screen")
                 }
+                .onChange(of: liveActivityEnabled) { player.refreshLiveActivity() }
             }
 
             Section("Notifications") {
@@ -86,4 +88,5 @@ struct SettingsView: View {
 
 #Preview {
     NavigationStack { SettingsView() }
+        .environmentObject(RadioPlayerModel())
 }

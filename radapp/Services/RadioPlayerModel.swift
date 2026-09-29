@@ -12,7 +12,10 @@ final class RadioPlayerModel: ObservableObject {
     @Published private(set) var liveShow: LiveShow?
     @Published private(set) var history: [PlayedTrack] = []
     @Published private(set) var connectivity: Connectivity = .good
-    var volume: Float = 0.72 { didSet { player?.volume = volume } }
+    var isMuted = false { didSet { player?.isMuted = isMuted } }
+    /// Stays at 1 on devices, where the phone's own volume sets the level.
+    /// Only the Simulator's stand-in volume slider changes it.
+    var volume: Float = 1 { didSet { player?.volume = volume } }
     @Published private(set) var isCurrentTrackLiked = false
 
     /// RadioCult stream for the station.
@@ -20,16 +23,31 @@ final class RadioPlayerModel: ObservableObject {
 
     private let client = RadioCultClient.shared
     private let modelContext: ModelContext?
+    private let schedule: ScheduleStore?
+    private let liveActivity = LiveActivityController()
 
     private var player: AVPlayer?
     private var metadataTimer: AnyCancellable?
     private var statusObservation: NSKeyValueObservation?
 
-    init(modelContext: ModelContext? = nil) {
+    init(modelContext: ModelContext? = nil, schedule: ScheduleStore? = nil) {
         self.modelContext = modelContext
+        self.schedule = schedule
     }
 
     var isOnAir: Bool { liveShow != nil }
+
+    /// While a show is live but no track is identified, the show stands in
+    /// for the track instead of "Radio Monash · Default playlist".
+    var displayTitle: String {
+        isIdentifiedTrack ? nowPlaying.title : liveShow?.name ?? nowPlaying.title
+    }
+
+    var displayArtist: String? {
+        isIdentifiedTrack || liveShow == nil ? nowPlaying.artist : nil
+    }
+
+    private var isIdentifiedTrack: Bool { nowPlaying != .offAir }
     var canLikeCurrentTrack: Bool { modelContext != nil && nowPlaying != .offAir }
     var isBusy: Bool { state == .connecting }
 
@@ -64,6 +82,8 @@ final class RadioPlayerModel: ObservableObject {
             state = .failed("Couldn't start audio session.")
         }
         configureRemoteCommands()
+        LiveActivityActions.togglePlayback = { [weak self] in self?.togglePlayback() }
+        LiveActivityActions.toggleLike = { [weak self] in self?.toggleLike() }
         startMetadataPolling()
     }
 
@@ -90,6 +110,7 @@ final class RadioPlayerModel: ObservableObject {
 
         let item = AVPlayerItem(url: streamURL)
         let player = AVPlayer(playerItem: item)
+        player.isMuted = isMuted
         player.volume = volume
         player.automaticallyWaitsToMinimizeStalling = true
         self.player = player
@@ -154,6 +175,7 @@ final class RadioPlayerModel: ObservableObject {
         let key = FavouriteTrack.key(title: nowPlaying.title, artist: nowPlaying.artist)
         setIfChanged(\.isCurrentTrackLiked, favourite(key: key) != nil)
         MPRemoteCommandCenter.shared().likeCommand.isActive = isCurrentTrackLiked
+        refreshLiveActivity()
     }
 
     // MARK: Metadata
@@ -181,10 +203,10 @@ final class RadioPlayerModel: ObservableObject {
     }
 
     private func apply(_ payload: (track: NowPlaying, show: LiveShow?)) {
-        let trackChanged = payload.track != nowPlaying
+        let changed = payload.track != nowPlaying || payload.show != liveShow
         setIfChanged(\.nowPlaying, payload.track)
         setIfChanged(\.liveShow, payload.show)
-        guard trackChanged else { return }
+        guard changed else { return }
         refreshLikeState()
         updateNowPlayingCentre()
     }
@@ -218,13 +240,39 @@ final class RadioPlayerModel: ObservableObject {
 
     private func updateNowPlayingCentre() {
         var info: [String: Any] = [
-            MPMediaItemPropertyTitle: nowPlaying.title,
-            MPMediaItemPropertyArtist: nowPlaying.artist,
+            MPMediaItemPropertyTitle: displayTitle,
+            MPMediaItemPropertyArtist: displayArtist ?? "Radio Monash",
             MPNowPlayingInfoPropertyIsLiveStream: true,
             MPNowPlayingInfoPropertyPlaybackRate: state == .playing ? 1.0 : 0.0
         ]
         if let show = liveShow { info[MPMediaItemPropertyAlbumTitle] = show.name }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        refreshLiveActivity()
+    }
+
+    /// Pushes the current state to the Lock Screen Live Activity. Also called
+    /// by Settings when the Live Activity toggle changes.
+    func refreshLiveActivity() {
+        switch state {
+        case .idle, .failed:
+            liveActivity.sync(nil, canStart: false)
+        case .connecting, .playing, .paused:
+            let onAir = schedule?.onAir()
+            let trackEnd = nowPlaying.duration.flatMap { duration in nowPlaying.startedAt.map { $0 + duration } }
+            liveActivity.sync(
+                RadioActivityAttributes.ContentState(
+                    title: displayTitle,
+                    artist: displayArtist ?? "",
+                    showBilling: onAir.map { LiveShow(name: $0.series.title, host: $0.series.hosts.first).billing }
+                        ?? liveShow?.billing,
+                    isPlaying: state == .playing,
+                    isLiked: isCurrentTrackLiked,
+                    progressStart: onAir?.start ?? nowPlaying.startedAt,
+                    progressEnd: onAir?.end ?? trackEnd
+                ),
+                canStart: state == .playing
+            )
+        }
     }
 
     private static func clock(_ seconds: TimeInterval) -> String {
