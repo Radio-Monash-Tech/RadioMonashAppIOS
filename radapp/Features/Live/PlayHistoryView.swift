@@ -23,11 +23,9 @@ struct PlayHistoryView: View {
                             .frame(width: 44, height: 44)
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(track.title).lineLimit(1)
-                            Text(track.artist)
-                                .font(.subheadline)
+                            MarqueeText(track.title, font: .body)
+                            MarqueeText(track.artist, font: .subheadline)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(1)
                         }
                         Spacer()
                         if isLiked {

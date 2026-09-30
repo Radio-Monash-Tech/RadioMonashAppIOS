@@ -17,14 +17,10 @@ struct MiniPlayer: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
             VStack(alignment: .leading, spacing: 0) {
-                Text(player.displayTitle)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
+                MarqueeText(player.displayTitle, font: .subheadline.weight(.semibold))
                 if let artist = player.displayArtist {
-                    Text(artist)
-                        .font(.caption)
+                    MarqueeText(artist, font: .caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
             }
 

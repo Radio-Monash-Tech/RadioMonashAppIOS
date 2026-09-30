@@ -44,6 +44,14 @@ struct LiveRadioView: View {
             .navigationTitle(model.liveShow?.name ?? "Radio Monash")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // Replaces the plain title so long show names scroll instead
+                // of cutting off. The title above still names the back button.
+                ToolbarItem(placement: .principal) {
+                    MarqueeText(model.liveShow?.name ?? "Radio Monash", font: .headline, alignment: .center)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                .sharedBackgroundVisibility(.hidden)
+
                 ToolbarItem(placement: .topBarLeading) {
                     ConnectionQualityBadge(connectivity: model.connectivity)
                         .fixedSize()

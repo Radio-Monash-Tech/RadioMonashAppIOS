@@ -40,6 +40,11 @@ final class RadioPlayerModel: ObservableObject {
     private var reconnectAttempts = 0
     private var reconnectBackgroundTask: UIBackgroundTaskIdentifier = .invalid
     private var resumeAfterInterruption = false
+    private var isSessionPrepared = false
+    /// Recently played as RadioCult reports it, and songs the app saw finish on the live feed.
+    private var reportedHistory: [PlayedTrack] = []
+    private var observedHistory: [PlayedTrack] = []
+    private static let historyLimit = 5
     private var sleepTimerTask: Task<Void, Never>?
 
     private static let stallTimeout: TimeInterval = 12
@@ -88,12 +93,20 @@ final class RadioPlayerModel: ObservableObject {
 
     // MARK: Session
 
+    static let resumeOnLaunchKey = "resumeOnLaunch"
+
+    /// Runs once per launch; the root view's `.task` can fire again if it reappears.
     func prepareSession() {
+        guard !isSessionPrepared else { return }
+        isSessionPrepared = true
         configureSession()
         observeAudioSession()
         LiveActivityActions.togglePlayback = { [weak self] in self?.togglePlayback() }
         LiveActivityActions.toggleLike = { [weak self] in self?.toggleLike() }
         startMetadataPolling()
+
+        let resumeOnLaunch = UserDefaults.standard.object(forKey: Self.resumeOnLaunchKey) as? Bool ?? false
+        if resumeOnLaunch, state == .idle { play() }
     }
 
     private func configureSession() {
@@ -403,6 +416,11 @@ final class RadioPlayerModel: ObservableObject {
         metadataTimer = Timer.publish(every: 20, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in Task { await self?.refreshMetadata() } }
+        // iOS suspends the app in the background when nothing is playing, so
+        // catch up as soon as it's back rather than waiting for the next tick.
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+            .sink { [weak self] _ in Task { await self?.refreshMetadata() } }
+            .store(in: &sessionSubscriptions)
     }
 
     func refreshMetadata() async {
@@ -414,19 +432,55 @@ final class RadioPlayerModel: ObservableObject {
         }
 
         do {
-            setIfChanged(\.history, try await client.history(limit: 5).toPlayedTracks())
+            reportedHistory = try await client.history(limit: Self.historyLimit).toPlayedTracks()
         } catch {
             // Keep whatever history we already have rather than flashing it empty.
         }
+        rebuildHistory()
     }
 
     private func apply(_ payload: (track: NowPlaying, show: LiveShow?)) {
         let changed = payload.track != nowPlaying || payload.show != liveShow
+        if payload.track != nowPlaying { recordFinishedTrack() }
         setIfChanged(\.nowPlaying, payload.track)
         setIfChanged(\.liveShow, payload.show)
         guard changed else { return }
         refreshLikeState()
         refreshWidgetArtwork()
+    }
+
+    /// RadioCult only lists a song in its history a while after it ends, so
+    /// the song that just finished would be missing. The live feed moving on
+    /// means it finished, so it's added straight away.
+    private func recordFinishedTrack() {
+        guard isIdentifiedTrack, let startedAt = nowPlaying.startedAt else { return }
+        let track = PlayedTrack(
+            id: "live-\(Int(startedAt.timeIntervalSince1970))",
+            title: nowPlaying.title,
+            artist: nowPlaying.artist,
+            playedAt: startedAt,
+            artworkURL: nowPlaying.artworkURL
+        )
+        guard !observedHistory.contains(where: { $0.isSamePlay(as: track) }) else { return }
+        observedHistory.insert(track, at: 0)
+        observedHistory = Array(observedHistory.prefix(Self.historyLimit))
+    }
+
+    /// RadioCult's history plus songs the app saw finish, newest first. When
+    /// both have a song, RadioCult's entry wins; the song on air now is left out.
+    private func rebuildHistory() {
+        var merged = reportedHistory
+        for track in observedHistory where !merged.contains(where: { $0.isSamePlay(as: track) }) {
+            merged.append(track)
+        }
+        let playing = nowPlaying.startedAt.map {
+            PlayedTrack(id: "", title: nowPlaying.title, artist: nowPlaying.artist, playedAt: $0, artworkURL: nil)
+        }
+        let recent = merged
+            .filter { track in playing.map { !track.isSamePlay(as: $0) } ?? true }
+            .sorted { $0.playedAt > $1.playedAt }
+            .prefix(Self.historyLimit)
+        setIfChanged(\.history, Array(recent))
     }
 
     /// Saves the RadioCult cover for the Live Activity. Unknown tracks, live

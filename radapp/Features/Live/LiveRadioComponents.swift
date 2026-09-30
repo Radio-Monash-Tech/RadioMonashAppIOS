@@ -136,17 +136,12 @@ struct MetadataDisplay: View {
                 errorState(message)
             } else {
                 VStack(spacing: 12) {
-                    Text(title)
-                        .font(.system(size: 24, weight: .bold))
+                    MarqueeText(title, font: .system(size: 24, weight: .bold), alignment: .center)
                         .foregroundStyle(.primary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
                         .animation(.default, value: title)
                     if let artist {
-                        Text(artist)
-                            .font(.system(size: 17))
+                        MarqueeText(artist, font: .system(size: 17), alignment: .center)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
                             .animation(.default, value: artist)
                     }
                 }
@@ -438,14 +433,10 @@ struct RecentlyPlayedRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(track.title)
-                    .font(.system(size: 14, weight: .medium))
+                MarqueeText(track.title, font: .system(size: 14, weight: .medium))
                     .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Text(track.artist)
-                    .font(.system(size: 12.5))
+                MarqueeText(track.artist, font: .system(size: 12.5))
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
             Spacer()
             if isLiked {

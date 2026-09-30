@@ -45,12 +45,9 @@ private struct LikedSongRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(track.title)
-                    .lineLimit(1)
-                Text(subtitle)
-                    .font(.subheadline)
+                MarqueeText(track.title, font: .body)
+                MarqueeText(subtitle, font: .subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
 
             Spacer(minLength: 8)

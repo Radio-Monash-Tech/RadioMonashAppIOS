@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
-    @AppStorage("resumeOnLaunch") private var resumeOnLaunch = true
+    @AppStorage(RadioPlayerModel.resumeOnLaunchKey) private var resumeOnLaunch = false
     @AppStorage(LiveActivityController.enabledKey) private var liveActivityEnabled = true
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @AppStorage("newArticleAlerts") private var newArticleAlerts = false

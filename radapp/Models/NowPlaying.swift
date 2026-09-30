@@ -36,6 +36,15 @@ struct PlayedTrack: Identifiable, Equatable {
     var artworkURL: URL?
 }
 
+extension PlayedTrack {
+    /// The same song at (nearly) the same start time. RadioCult's history and
+    /// live feed round start times differently, so allow a little slack.
+    func isSamePlay(as other: PlayedTrack) -> Bool {
+        title == other.title && artist == other.artist
+            && abs(playedAt.timeIntervalSince(other.playedAt)) < 30
+    }
+}
+
 // MARK: - Stream / connectivity state
 
 enum StreamState: Equatable {
