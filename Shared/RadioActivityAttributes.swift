@@ -14,6 +14,8 @@ nonisolated struct RadioActivityAttributes: ActivityAttributes {
         /// schedule knows it, otherwise the current track.
         var progressStart: Date?
         var progressEnd: Date?
+        /// Track cover saved in `WidgetArtwork.directory`. `nil` shows the station logo.
+        var artworkFileName: String? = nil
 
         var progressWindow: ClosedRange<Date>? {
             guard let progressStart, let progressEnd, progressStart < progressEnd else { return nil }

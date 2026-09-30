@@ -290,6 +290,59 @@ struct FavoriteToggleButton: View {
     }
 }
 
+struct SleepTimerButton: View {
+    let endsAt: Date?
+    /// End of the on-air show, offered as an extra option when known.
+    let showEndsAt: Date?
+    let onSet: (Date?) -> Void
+
+    private static let durations = [5, 15, 30, 45, 60]
+
+    var body: some View {
+        Menu {
+            if endsAt != nil {
+                Button("Turn Off Timer", systemImage: "xmark", role: .destructive) { onSet(nil) }
+            }
+            if let showEndsAt, showEndsAt > .now {
+                Button("End of Show", systemImage: "calendar") { onSet(showEndsAt) }
+            }
+            ForEach(Self.durations, id: \.self) { minutes in
+                Button(minutes == 60 ? "1 hour" : "\(minutes) minutes") {
+                    onSet(.now.addingTimeInterval(TimeInterval(minutes * 60)))
+                }
+            }
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12).fill(Color.primary)
+                Group {
+                    if let endsAt, endsAt > .now {
+                        VStack(spacing: 1) {
+                            Image(systemName: "moon.fill")
+                                .font(.system(size: 15))
+                            Text(timerInterval: Date.now...endsAt, countsDown: true)
+                                .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .padding(.horizontal, 4)
+                    } else {
+                        Image(systemName: "moon.fill")
+                            .font(.system(size: 20))
+                    }
+                }
+                .foregroundStyle(Color(.systemBackground))
+            }
+            .frame(width: 56, height: 56)
+            .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+        .menuOrder(.fixed)
+        .sensoryFeedback(.selection, trigger: endsAt)
+        .accessibilityLabel("Sleep timer")
+        .accessibilityValue(endsAt.map { "Stops at \($0.formatted(date: .omitted, time: .shortened))" } ?? "Off")
+    }
+}
+
 // MARK: - Heart burst (favorited animation)
 
 struct HeartBurstOverlay: View {

@@ -15,7 +15,7 @@ struct RadioLiveActivity: Widget {
             let state = context.state
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    StationArtwork(size: 52)
+                    TrackArtwork(fileName: state.artworkFileName, size: 52)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     ActivityControls(state: state, size: 40)
@@ -46,7 +46,7 @@ private struct LockScreenView: View {
     let state: RadioActivityAttributes.ContentState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Circle().fill(accent).frame(width: 7, height: 7)
                 Text(state.isPlaying ? "RADIO MONASH · LIVE" : "RADMON RADIO · PAUSED")
@@ -56,7 +56,7 @@ private struct LockScreenView: View {
             }
 
             HStack(spacing: 14) {
-                StationArtwork(size: 64)
+                TrackArtwork(fileName: state.artworkFileName, size: 64)
                 TrackText(state: state, compact: false)
                 Spacer(minLength: 8)
                 ActivityControls(state: state, size: 44)
@@ -74,20 +74,26 @@ private struct TrackText: View {
     let compact: Bool
 
     var body: some View {
+        // Live Activities can't animate, so long names wrap and shrink
+        // rather than scroll, keeping the whole song readable.
         VStack(alignment: .leading, spacing: 2) {
             Text(state.title)
-                .font(compact ? .headline : .title3.weight(.semibold))
+                .font(.headline)
                 .foregroundStyle(.white)
+                .lineLimit(2)
             Text(state.artist)
-                .font(compact ? .subheadline : .body)
+                .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
+                .lineLimit(1)
             if let billing = state.showBilling, !compact {
                 Text(billing)
-                    .font(.subheadline)
+                    .font(.footnote)
                     .foregroundStyle(.white.opacity(0.4))
+                    .lineLimit(1)
             }
         }
-        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -120,28 +126,27 @@ private struct ActivityControls: View {
     }
 }
 
-private struct StationArtwork: View {
+/// The track's RadioCult cover when the app has saved one, otherwise the station logo.
+private struct TrackArtwork: View {
+    let fileName: String?
     let size: CGFloat
 
+    private var cover: UIImage? {
+        guard let fileName, let url = WidgetArtwork.fileURL(named: fileName) else { return nil }
+        return UIImage(contentsOfFile: url.path)
+    }
+
     var body: some View {
-        RoundedRectangle(cornerRadius: size * 0.2)
-            .fill(Color(white: 0.2))
-            .overlay {
-                HStack(spacing: size * 0.08) {
-                    ForEach(0..<12, id: \.self) { _ in
-                        Rectangle().fill(.white.opacity(0.04)).frame(width: size * 0.08)
-                    }
-                }
-                .frame(width: size * 2)
-                .rotationEffect(.degrees(45))
+        Group {
+            if let cover {
+                Image(uiImage: cover).resizable()
+            } else {
+                Image("StationLogo").resizable()
             }
-            .overlay {
-                Text("RM")
-                    .font(.system(size: size * 0.3, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.35))
-            }
-            .clipShape(RoundedRectangle(cornerRadius: size * 0.2))
-            .frame(width: size, height: size)
+        }
+        .scaledToFill()
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.2, style: .continuous))
     }
 }
 
@@ -167,6 +172,12 @@ private struct ShowProgressBar: View {
     RadioActivityAttributes.ContentState(
         title: "Wedding Riff", artist: "Mellowing", showBilling: "Afternoon Drift with Kaia",
         isPlaying: true, isLiked: false,
+        progressStart: .now.addingTimeInterval(-40 * 60), progressEnd: .now.addingTimeInterval(80 * 60)
+    )
+    RadioActivityAttributes.ContentState(
+        title: "Nobody's Business But Mine (Extended Live Session Version)",
+        artist: "Peach Fuzz & The Midnight Collective", showBilling: "Afternoon Drift with Kaia",
+        isPlaying: true, isLiked: true,
         progressStart: .now.addingTimeInterval(-40 * 60), progressEnd: .now.addingTimeInterval(80 * 60)
     )
 }

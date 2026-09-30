@@ -120,6 +120,11 @@ struct LiveRadioView: View {
         VStack(spacing: 20) {
             VolumeControlBar(isMuted: model.isMuted) { model.isMuted = $0 }
             HStack(spacing: 16) {
+                SleepTimerButton(
+                    endsAt: model.sleepTimerEndsAt,
+                    showEndsAt: model.currentShowEndsAt,
+                    onSet: model.setSleepTimer(endingAt:)
+                )
                 PlaybackFAB(isPlaying: model.state == .playing, action: model.togglePlayback)
                 FavoriteToggleButton(isFavorite: model.isCurrentTrackLiked) {
                     model.toggleLike()

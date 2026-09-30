@@ -16,6 +16,7 @@ final class RadioPlayerModel: ObservableObject {
     /// Only the Simulator's stand-in volume slider changes it.
     var volume: Float = 1 { didSet { player?.volume = volume } }
     @Published private(set) var isCurrentTrackLiked = false
+    @Published private(set) var sleepTimerEndsAt: Date?
 
     /// RadioCult stream for the station.
     private let streamURL = URL(string: "https://radio-monash.radiocult.fm/stream")!
@@ -24,10 +25,25 @@ final class RadioPlayerModel: ObservableObject {
     private let modelContext: ModelContext?
     private let schedule: ScheduleStore?
     private let liveActivity = LiveActivityController()
+    private let widgetArtwork = WidgetArtworkStore()
+    private var widgetArtworkFileName: String?
+    private var widgetArtworkTask: Task<Void, Never>?
 
     private var player: AVPlayer?
     private var metadataTimer: AnyCancellable?
     private var statusObservation: NSKeyValueObservation?
+    private var timeControlObservation: NSKeyValueObservation?
+    private var streamSubscriptions = Set<AnyCancellable>()
+    private var sessionSubscriptions = Set<AnyCancellable>()
+    private var stallWatchdog: Task<Void, Never>?
+    private var reconnectTask: Task<Void, Never>?
+    private var reconnectAttempts = 0
+    private var reconnectBackgroundTask: UIBackgroundTaskIdentifier = .invalid
+    private var resumeAfterInterruption = false
+    private var sleepTimerTask: Task<Void, Never>?
+
+    private static let stallTimeout: TimeInterval = 12
+    private static let maxReconnectAttempts = 6
 
     init(modelContext: ModelContext? = nil, schedule: ScheduleStore? = nil) {
         self.modelContext = modelContext
@@ -73,6 +89,14 @@ final class RadioPlayerModel: ObservableObject {
     // MARK: Session
 
     func prepareSession() {
+        configureSession()
+        observeAudioSession()
+        LiveActivityActions.togglePlayback = { [weak self] in self?.togglePlayback() }
+        LiveActivityActions.toggleLike = { [weak self] in self?.toggleLike() }
+        startMetadataPolling()
+    }
+
+    private func configureSession() {
         let session = AVAudioSession.sharedInstance()
         do {
             // .playback keeps audio alive when the screen locks and ignores
@@ -84,9 +108,6 @@ final class RadioPlayerModel: ObservableObject {
         } catch {
             state = .failed("Couldn't start audio session.")
         }
-        LiveActivityActions.togglePlayback = { [weak self] in self?.togglePlayback() }
-        LiveActivityActions.toggleLike = { [weak self] in self?.toggleLike() }
-        startMetadataPolling()
     }
 
     // MARK: Transport
@@ -94,21 +115,36 @@ final class RadioPlayerModel: ObservableObject {
     func togglePlayback() {
         switch state {
         case .playing:
-            player?.pause()
-            state = .paused
-        case .paused:
-            player?.play()
-            state = .playing
-        case .idle, .failed:
+            stop()
+        case .paused, .idle, .failed:
             play()
         case .connecting:
             break
         }
+    }
+
+    /// Always opens a fresh connection. A live stream that has sat paused goes
+    /// stale, and resuming it plays silence instead of the station.
+    func play() {
+        reconnectAttempts = 0
+        startStream()
+    }
+
+    func retry() { play() }
+
+    /// Pausing live radio drops the connection; `play()` rejoins it live.
+    private func stop() {
+        tearDownStream()
+        state = .paused
         refreshLiveActivity()
     }
 
-    func play() {
+    private func startStream() {
+        tearDownStream()
         state = .connecting
+        refreshLiveActivity()
+        // The session can be deactivated while the app sat suspended.
+        try? AVAudioSession.sharedInstance().setActive(true)
 
         let item = AVPlayerItem(url: streamURL)
         let player = AVPlayer(playerItem: item)
@@ -118,24 +154,205 @@ final class RadioPlayerModel: ObservableObject {
         self.player = player
 
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+            let status = item.status
             Task { @MainActor in
-                guard let self else { return }
-                switch item.status {
+                guard let self, self.player?.currentItem === item else { return }
+                switch status {
                 case .readyToPlay:
+                    guard self.state == .connecting else { return }
                     self.player?.play()
                     self.state = .playing
+                    self.endReconnectBackgroundTask()
+                    self.refreshLiveActivity()
                 case .failed:
-                    self.state = .failed(item.error?.localizedDescription
-                        ?? "We couldn't reach the stream.")
+                    self.streamDropped()
                 default:
                     break
                 }
-                self.refreshLiveActivity()
+            }
+        }
+
+        timeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
+            let status = player.timeControlStatus
+            Task { @MainActor in
+                guard let self, self.player === player else { return }
+                self.timeControlStatusChanged(status)
+            }
+        }
+
+        // The server closing the connection ends the item even though live
+        // radio never really ends, so both notifications mean "reconnect".
+        let center = NotificationCenter.default
+        for name in [AVPlayerItem.didPlayToEndTimeNotification, AVPlayerItem.failedToPlayToEndTimeNotification] {
+            center.publisher(for: name, object: item)
+                .sink { [weak self] _ in
+                    Task { @MainActor in
+                        guard let self, self.player?.currentItem === item else { return }
+                        self.streamDropped()
+                    }
+                }
+                .store(in: &streamSubscriptions)
+        }
+    }
+
+    private func tearDownStream() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        stallWatchdog?.cancel()
+        stallWatchdog = nil
+        statusObservation = nil
+        timeControlObservation = nil
+        streamSubscriptions.removeAll()
+        player?.pause()
+        player = nil
+        endReconnectBackgroundTask()
+    }
+
+    private func timeControlStatusChanged(_ status: AVPlayer.TimeControlStatus) {
+        switch status {
+        case .playing:
+            stallWatchdog?.cancel()
+            stallWatchdog = nil
+            reconnectAttempts = 0
+        case .waitingToPlayAtSpecifiedRate where state == .playing:
+            // AVPlayer rides out short buffering on its own; a stream that
+            // stays stuck has usually lost its connection for good.
+            guard stallWatchdog == nil else { return }
+            stallWatchdog = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(Self.stallTimeout))
+                guard !Task.isCancelled, let self else { return }
+                self.stallWatchdog = nil
+                if self.player?.timeControlStatus != .playing { self.streamDropped() }
+            }
+        default:
+            break
+        }
+    }
+
+    /// Reconnects after the stream drops mid-listen, backing off between
+    /// attempts, and only reports a failure once every attempt has failed.
+    private func streamDropped() {
+        guard state == .playing || state == .connecting else { return }
+        // A first connection that fails is reported straight away; only a
+        // stream that was already playing (or reconnecting) retries.
+        let isRecovering = state == .playing || reconnectAttempts > 0
+        guard isRecovering, reconnectAttempts < Self.maxReconnectAttempts else {
+            tearDownStream()
+            state = .failed(isRecovering ? "Lost connection to the stream." : "We couldn't reach the stream.")
+            refreshLiveActivity()
+            return
+        }
+        reconnectAttempts += 1
+        let delay = min(16, pow(2, Double(reconnectAttempts - 1)))
+
+        tearDownStream()
+        state = .connecting
+        refreshLiveActivity()
+        // With no audio playing, iOS suspends a backgrounded app within
+        // seconds; ask for time so the reconnect still happens.
+        reconnectBackgroundTask = UIApplication.shared.beginBackgroundTask { [weak self] in
+            self?.endReconnectBackgroundTask()
+        }
+        reconnectTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled, let self, self.state == .connecting else { return }
+            self.startStream()
+            // startStream() ended the old background task; keep one alive
+            // until the new connection is ready.
+            self.reconnectBackgroundTask = UIApplication.shared.beginBackgroundTask { [weak self] in
+                self?.endReconnectBackgroundTask()
             }
         }
     }
 
-    func retry() { play() }
+    private func endReconnectBackgroundTask() {
+        guard reconnectBackgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(reconnectBackgroundTask)
+        reconnectBackgroundTask = .invalid
+    }
+
+    // MARK: Audio session events
+
+    private func observeAudioSession() {
+        let center = NotificationCenter.default
+        let session = AVAudioSession.sharedInstance()
+
+        center.publisher(for: AVAudioSession.interruptionNotification, object: session)
+            .sink { [weak self] note in
+                let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt)
+                    .flatMap(AVAudioSession.InterruptionType.init(rawValue:))
+                let options = AVAudioSession.InterruptionOptions(
+                    rawValue: note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0)
+                Task { @MainActor in self?.handleInterruption(type, options: options) }
+            }
+            .store(in: &sessionSubscriptions)
+
+        center.publisher(for: AVAudioSession.routeChangeNotification, object: session)
+            .sink { [weak self] note in
+                let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt)
+                    .flatMap(AVAudioSession.RouteChangeReason.init(rawValue:))
+                Task { @MainActor in
+                    // Unplugged headphones: iOS pauses us, so match it rather
+                    // than claim to be playing in silence.
+                    guard let self, reason == .oldDeviceUnavailable, self.state == .playing else { return }
+                    self.stop()
+                }
+            }
+            .store(in: &sessionSubscriptions)
+
+        center.publisher(for: AVAudioSession.mediaServicesWereResetNotification, object: session)
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    guard let self else { return }
+                    let wasPlaying = self.state == .playing || self.state == .connecting
+                    self.configureSession()
+                    if wasPlaying { self.play() }
+                }
+            }
+            .store(in: &sessionSubscriptions)
+    }
+
+    private func handleInterruption(_ type: AVAudioSession.InterruptionType?, options: AVAudioSession.InterruptionOptions) {
+        switch type {
+        case .began:
+            // A phone call or alarm took the audio; iOS has already paused us.
+            guard state == .playing || state == .connecting else { return }
+            resumeAfterInterruption = true
+            stop()
+        case .ended:
+            guard resumeAfterInterruption else { return }
+            resumeAfterInterruption = false
+            if options.contains(.shouldResume) { play() }
+        default:
+            break
+        }
+    }
+
+    // MARK: Sleep timer
+
+    /// When the on-air show ends, if the schedule knows it; offered as a sleep timer option.
+    var currentShowEndsAt: Date? {
+        schedule?.onAir()?.end
+    }
+
+    /// Stops the stream at `date`. Passing `nil` cancels the timer.
+    func setSleepTimer(endingAt date: Date?) {
+        sleepTimerTask?.cancel()
+        sleepTimerEndsAt = date
+        guard let date else { return }
+        sleepTimerTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(max(0, date.timeIntervalSinceNow)))
+            guard !Task.isCancelled else { return }
+            self?.sleepTimerFired()
+        }
+    }
+
+    private func sleepTimerFired() {
+        sleepTimerEndsAt = nil
+        sleepTimerTask = nil
+        guard state == .playing || state == .connecting else { return }
+        stop()
+    }
 
     func toggleLike() {
         guard canLikeCurrentTrack else { return }
@@ -209,6 +426,25 @@ final class RadioPlayerModel: ObservableObject {
         setIfChanged(\.liveShow, payload.show)
         guard changed else { return }
         refreshLikeState()
+        refreshWidgetArtwork()
+    }
+
+    /// Saves the RadioCult cover for the Live Activity. Unknown tracks, live
+    /// shows and tracks without a cover fall back to the station logo.
+    private func refreshWidgetArtwork() {
+        widgetArtworkTask?.cancel()
+        guard !showsStationLogo, let url = nowPlaying.artworkURL else {
+            widgetArtworkFileName = nil
+            refreshLiveActivity()
+            return
+        }
+        widgetArtworkTask = Task { [weak self] in
+            guard let self else { return }
+            let name = await widgetArtwork.save(url)
+            guard !Task.isCancelled else { return }
+            widgetArtworkFileName = name
+            refreshLiveActivity()
+        }
     }
 
     private func setIfChanged<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<RadioPlayerModel, Value>, _ value: Value) {
@@ -235,7 +471,8 @@ final class RadioPlayerModel: ObservableObject {
                     isPlaying: state == .playing,
                     isLiked: isCurrentTrackLiked,
                     progressStart: onAir?.start ?? nowPlaying.startedAt,
-                    progressEnd: onAir?.end ?? trackEnd
+                    progressEnd: onAir?.end ?? trackEnd,
+                    artworkFileName: widgetArtworkFileName
                 ),
                 canStart: state == .playing
             )

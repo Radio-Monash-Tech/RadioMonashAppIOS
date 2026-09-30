@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
-    @AppStorage("sleepTimerMinutes") private var sleepTimerMinutes = 0
     @AppStorage("resumeOnLaunch") private var resumeOnLaunch = true
     @AppStorage(LiveActivityController.enabledKey) private var liveActivityEnabled = true
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
@@ -36,12 +35,6 @@ struct SettingsView: View {
             }
 
             Section("Playback") {
-                Picker("Sleep Timer", selection: $sleepTimerMinutes) {
-                    Text("Off").tag(0)
-                    Text("15 minutes").tag(15)
-                    Text("30 minutes").tag(30)
-                    Text("1 hour").tag(60)
-                }
                 LabeledContent("Stream Quality", value: "128 kbps AAC")
                 Toggle(isOn: $resumeOnLaunch) {
                     Text("Resume on Launch")
