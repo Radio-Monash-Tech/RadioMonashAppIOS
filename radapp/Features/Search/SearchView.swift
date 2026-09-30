@@ -36,7 +36,7 @@ struct SearchView: View {
                     ContentUnavailableView(
                         "Search Radio Monash",
                         systemImage: "magnifyingglass",
-                        description: Text("Find shows, presenters, articles and tracks played earlier.")
+                        description: Text("Find shows, articles, and recently played tracks.")
                     )
                 } else if shows.isEmpty && articles.isEmpty && tracks.isEmpty {
                     ContentUnavailableView.search(text: trimmed)

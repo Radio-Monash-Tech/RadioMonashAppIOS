@@ -21,7 +21,7 @@ struct MiniPlayer: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                 if let artist = player.displayArtist {
-                    Text(player.liveShow?.billing ?? artist)
+                    Text(artist)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

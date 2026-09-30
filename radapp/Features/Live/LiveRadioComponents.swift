@@ -358,7 +358,7 @@ struct RecentlyPlayedHeader: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text("Played earlier")
+            Text("Recently played")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(.primary)
             Spacer()
