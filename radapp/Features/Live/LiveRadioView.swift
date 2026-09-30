@@ -15,7 +15,7 @@ struct LiveRadioView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ZStack {
-                ArtworkBackgroundLayer(url: model.isOnAir ? nil : model.nowPlaying.artworkURL)
+                ArtworkBackgroundLayer(url: model.showsStationLogo ? nil : model.nowPlaying.artworkURL)
 
                 GeometryReader { viewport in
                     List {
@@ -103,7 +103,7 @@ struct LiveRadioView: View {
 
             GlowingArtwork(
                 url: model.nowPlaying.artworkURL,
-                showsStationLogo: model.isOnAir,
+                showsStationLogo: model.showsStationLogo,
                 isBusy: model.isBusy,
                 onDoubleTap: { showingPlatformSheet = true }
             )

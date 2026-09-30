@@ -81,7 +81,7 @@ struct ConnectionQualityBadge: View {
 
 struct GlowingArtwork: View {
     let url: URL?
-    /// While a show is live the cover shows the station logo, not track art.
+    /// While no track is identified the cover shows the station logo, not track art.
     var showsStationLogo = false
     let isBusy: Bool
     let onDoubleTap: () -> Void

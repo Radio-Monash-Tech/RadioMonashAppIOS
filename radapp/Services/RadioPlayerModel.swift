@@ -47,6 +47,8 @@ final class RadioPlayerModel: ObservableObject {
     }
 
     private var isIdentifiedTrack: Bool { nowPlaying != .offAir }
+    /// The station logo stands in for cover art only while no track is identified.
+    var showsStationLogo: Bool { !isIdentifiedTrack }
     var canLikeCurrentTrack: Bool { modelContext != nil && nowPlaying != .offAir }
     var isBusy: Bool { state == .connecting }
 

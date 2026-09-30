@@ -7,7 +7,7 @@ struct MiniPlayer: View {
     var body: some View {
         HStack(spacing: 12) {
             Group {
-                if player.isOnAir {
+                if player.showsStationLogo {
                     Image(.stationLogo).resizable().scaledToFill()
                 } else {
                     ArtworkImage(url: player.nowPlaying.artworkURL)
