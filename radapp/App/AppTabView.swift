@@ -19,6 +19,7 @@ struct AppTabView: View {
     @EnvironmentObject private var schedule: ScheduleStore
     @EnvironmentObject private var journalism: JournalismStore
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
+    @AppStorage(ContrastPreference.storageKey) private var increaseContrast = false
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @State private var selection: AppTab = .live
@@ -43,6 +44,7 @@ struct AppTabView: View {
         }
         .modifier(MiniPlayerAccessory(isEnabled: selection != .live) { selection = .live })
         .preferredColorScheme(appearance.colorScheme)
+        .increasedContrast(increaseContrast)
         .task {
             player.prepareSession()
             async let scheduleLoad: Void = schedule.loadIfNeeded()

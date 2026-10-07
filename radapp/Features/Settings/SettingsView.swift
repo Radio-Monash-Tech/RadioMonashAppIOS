@@ -34,6 +34,14 @@ struct SettingsView: View {
                 }
             }
 
+            Section {
+                NavigationLink {
+                    AccessibilitySettingsView()
+                } label: {
+                    Label("Accessibility", systemImage: "accessibility")
+                }
+            }
+
             Section("Playback") {
                 LabeledContent("Stream Quality", value: "128 kbps AAC")
                 Toggle(isOn: $resumeOnLaunch) {
