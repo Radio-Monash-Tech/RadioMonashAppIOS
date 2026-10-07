@@ -3,7 +3,8 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-private let accent = Brand.accent
+/// Read on each render so the activity follows the colour picked in the app.
+private var accent: Color { AccentChoice.current.color }
 
 struct RadioLiveActivity: Widget {
     var body: some WidgetConfiguration {

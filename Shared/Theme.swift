@@ -1,10 +1,6 @@
 import SwiftUI
 
 enum Brand {
-    /// The app's single accent colour, also used by the Live Activity.
-    static let accent = Color.blue
-    static let onAccent = Color.white
-
     static let background = Color(.systemBackground)
     static let elevated = Color(.secondarySystemBackground)
     static let artworkFill = Color(.tertiarySystemFill)

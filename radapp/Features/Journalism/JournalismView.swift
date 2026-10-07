@@ -4,6 +4,7 @@ import SwiftData
 struct JournalismView: View {
     @EnvironmentObject private var journalism: JournalismStore
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accentChoice) private var accent
     @Query private var savedArticles: [SavedArticle]
     @State private var path: [Article] = []
 
@@ -76,7 +77,7 @@ struct JournalismView: View {
                         Label(savedCopy == nil ? "Save" : "Unsave",
                               systemImage: savedCopy == nil ? "bookmark.fill" : "bookmark.slash.fill")
                     }
-                    .tint(savedCopy == nil ? Brand.accent : .gray)
+                    .tint(savedCopy == nil ? accent.color : .gray)
                 }
                 .onAppear {
                     if article.id == journalism.articles.last?.id {

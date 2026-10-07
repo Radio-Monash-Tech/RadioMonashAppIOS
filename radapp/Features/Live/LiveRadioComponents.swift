@@ -45,11 +45,12 @@ struct ArtworkBackgroundLayer: View {
 
 struct ConnectionQualityBadge: View {
     let connectivity: Connectivity
+    @Environment(\.accentChoice) private var accent
     @State private var pulse = false
 
     private var color: Color {
         switch connectivity {
-        case .good: return Brand.accent
+        case .good: return accent.color
         case .weak: return PlayerPalette.warn
         case .offline: return PlayerPalette.error
         }

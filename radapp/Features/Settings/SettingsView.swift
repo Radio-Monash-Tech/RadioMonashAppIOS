@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
@@ -6,9 +7,12 @@ struct SettingsView: View {
     @AppStorage(LiveActivityController.enabledKey) private var liveActivityEnabled = true
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @AppStorage("newArticleAlerts") private var newArticleAlerts = false
+    @AppStorage(AccentChoice.storageKey, store: AccentChoice.store) private var accent: AccentChoice = .blue
+    @AppStorage(ContrastPreference.storageKey) private var increaseContrast = false
 
     @EnvironmentObject private var player: RadioPlayerModel
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
     @State private var cacheBytes = URLCache.shared.currentDiskUsage
 
     private var version: String {
@@ -34,11 +38,34 @@ struct SettingsView: View {
                 }
             }
 
-            Section {
-                NavigationLink {
-                    AccessibilitySettingsView()
+            Section("Customization") {
+                Picker(selection: $accent) {
+                    ForEach(AccentChoice.allCases) { choice in
+                        Label {
+                            Text(choice.label)
+                        } icon: {
+                            Swatch(color: choice.uiColor)
+                        }
+                        .tag(choice)
+                    }
                 } label: {
-                    Label("Accessibility", systemImage: "accessibility")
+                    Text("Colour")
+                    Text("Accent used across the app")
+                }
+                .pickerStyle(.menu)
+                .onChange(of: accent) { player.refreshLiveActivity() }
+            }
+
+            Section {
+                Toggle(isOn: $increaseContrast) {
+                    Text("Increase Contrast")
+                    Text("Darker text, stronger colours and solid backgrounds")
+                }
+            } header: {
+                Text("Accessibility")
+            } footer: {
+                if !increaseContrast && contrast == .increased {
+                    Text("Already on because Increase Contrast is turned on in iOS Settings.")
                 }
             }
 
@@ -84,6 +111,17 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Menus draw SF Symbols as templates, so the colour is baked into the image.
+private struct Swatch: View {
+    let color: UIColor
+
+    var body: some View {
+        if let image = UIImage(systemName: "circle.fill")?.withTintColor(color, renderingMode: .alwaysOriginal) {
+            Image(uiImage: image)
+        }
     }
 }
 

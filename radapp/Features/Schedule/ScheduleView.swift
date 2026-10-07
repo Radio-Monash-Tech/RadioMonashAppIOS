@@ -4,6 +4,7 @@ enum ScheduleRoute: Hashable { case following }
 
 struct ScheduleView: View {
     @EnvironmentObject private var schedule: ScheduleStore
+    @Environment(\.accentChoice) private var accent
     @State private var selectedDay = Calendar.melbourne.startOfDay(for: .now)
     @State private var now = Date()
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
@@ -75,7 +76,7 @@ struct ScheduleView: View {
                 NavigationLink(value: show.series) {
                     ScheduleRow(show: show, isOnAir: isOnAir, isFollowed: isFollowed)
                 }
-                .listRowBackground(isOnAir ? Brand.accent.opacity(0.12) : nil)
+                .listRowBackground(isOnAir ? accent.color.opacity(0.12) : nil)
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button {
                         followed.toggle(show.series.id)
@@ -83,7 +84,7 @@ struct ScheduleView: View {
                         Label(isFollowed ? "Unfollow" : "Follow",
                               systemImage: isFollowed ? "bell.slash.fill" : "bell.fill")
                     }
-                    .tint(isFollowed ? .gray : Brand.accent)
+                    .tint(isFollowed ? .gray : accent.color)
                 }
             }
             .sensoryFeedback(.success, trigger: followed.ids.count)
@@ -156,7 +157,7 @@ private struct ScheduleRow: View {
                     if isFollowed {
                         Image(systemName: "bell.fill")
                             .font(.caption)
-                            .foregroundStyle(Brand.accent)
+                            .foregroundStyle(.tint)
                             .accessibilityLabel("Following")
                     }
                 }
@@ -186,13 +187,15 @@ private extension ScheduledShow {
 }
 
 struct OnAirBadge: View {
+    @Environment(\.accentChoice) private var accent
+
     var body: some View {
         Text("ON AIR")
             .font(.caption2.weight(.bold))
-            .foregroundStyle(Brand.onAccent)
+            .foregroundStyle(accent.onColor)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Brand.accent, in: Capsule())
+            .background(accent.color, in: Capsule())
             .accessibilityLabel("On air now")
     }
 }

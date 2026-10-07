@@ -11,7 +11,7 @@ struct ArticleByline: View {
             Text(article.publishedAt, format: .dateTime.day().month(.abbreviated).year())
             if isSaved {
                 Image(systemName: "bookmark.fill")
-                    .foregroundStyle(Brand.accent)
+                    .foregroundStyle(.tint)
                     .accessibilityLabel("Saved")
             }
         }
