@@ -322,7 +322,7 @@ struct SleepTimerButton: View {
                 Group {
                     if let endsAt, endsAt > .now {
                         VStack(spacing: 1) {
-                            Image(systemName: "moon.fill")
+                            Image(systemName: "alarm.fill")
                                 .font(.system(size: 15))
                             Text(timerInterval: Date.now...endsAt, countsDown: true)
                                 .font(.system(size: 11, weight: .semibold).monospacedDigit())
@@ -331,7 +331,7 @@ struct SleepTimerButton: View {
                         }
                         .padding(.horizontal, 4)
                     } else {
-                        Image(systemName: "moon.fill")
+                        Image(systemName: "alarm.fill")
                             .font(.system(size: 20))
                     }
                 }
