@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-enum LiveRoute: Hashable { case liked, statistics, history }
+enum LiveRoute: Hashable { case history }
 
 struct LiveRadioView: View {
 
@@ -57,15 +57,6 @@ struct LiveRadioView: View {
                         .fixedSize()
                 }
                 .sharedBackgroundVisibility(.hidden)
-
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    NavigationLink(value: LiveRoute.liked) {
-                        Label("Liked Songs", systemImage: "heart")
-                    }
-                    NavigationLink(value: LiveRoute.statistics) {
-                        Label("Listening Statistics", systemImage: "chart.bar")
-                    }
-                }
             }
             .sheet(isPresented: $showingPlatformSheet) {
                 PlatformSheet(track: model.nowPlaying)
@@ -152,10 +143,6 @@ struct LiveRadioView: View {
     @ViewBuilder
     private func destination(for route: LiveRoute) -> some View {
         switch route {
-        case .liked:
-            LikedSongsView()
-        case .statistics:
-            ListeningStatisticsView()
         case .history:
             PlayHistoryView()
         }

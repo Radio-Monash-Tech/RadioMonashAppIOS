@@ -1,7 +1,5 @@
 import SwiftUI
 
-enum ScheduleRoute: Hashable { case following }
-
 struct ScheduleView: View {
     @EnvironmentObject private var schedule: ScheduleStore
     @Environment(\.accentChoice) private var accent
@@ -21,12 +19,6 @@ struct ScheduleView: View {
             }
             .listStyle(.plain)
             .navigationTitle("Schedule")
-            .navigationSubtitle("Australia/Melbourne")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink("Following", value: ScheduleRoute.following)
-                }
-            }
             .refreshable { await schedule.load() }
             .task { await schedule.loadIfNeeded() }
             .task {
@@ -36,7 +28,6 @@ struct ScheduleView: View {
                 }
             }
             .navigationDestination(for: ShowSeries.self) { ShowDetailView(series: $0) }
-            .navigationDestination(for: ScheduleRoute.self) { _ in FollowedShowsView() }
         }
     }
 
