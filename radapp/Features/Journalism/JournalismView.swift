@@ -148,12 +148,6 @@ private struct ArticleRow: View {
                 Text(article.title)
                     .font(.headline)
                     .lineLimit(3)
-                if !article.excerpt.isEmpty {
-                    Text(article.excerpt)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
                 ArticleByline(article: article, isSaved: isSaved)
             }
             Spacer(minLength: 0)
