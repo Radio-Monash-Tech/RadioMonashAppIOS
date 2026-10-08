@@ -76,7 +76,7 @@ struct ShowDetailView: View {
                 }
             }
         }
-        .navigationTitle(series.title)
+        .contentMargins(.top, 0, for: .scrollContent)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
