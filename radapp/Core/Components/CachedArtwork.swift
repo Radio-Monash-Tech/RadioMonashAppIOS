@@ -35,27 +35,57 @@ final class ArtworkCache {
 struct CachedArtwork<Content: View, Placeholder: View>: View {
     let url: URL?
     @ViewBuilder let content: (Image) -> Content
-    @ViewBuilder let placeholder: () -> Placeholder
+    /// Receives `true` while the image is still downloading, `false` when there is no image to show.
+    @ViewBuilder let placeholder: (_ isLoading: Bool) -> Placeholder
 
     @State private var lastLoaded: UIImage?
+    @State private var failedURL: URL?
+
+    init(
+        url: URL?,
+        @ViewBuilder content: @escaping (Image) -> Content,
+        @ViewBuilder placeholder: @escaping (_ isLoading: Bool) -> Placeholder
+    ) {
+        self.url = url
+        self.content = content
+        self.placeholder = placeholder
+    }
+
+    init(
+        url: URL?,
+        @ViewBuilder content: @escaping (Image) -> Content,
+        @ViewBuilder placeholder: @escaping () -> Placeholder
+    ) {
+        self.init(url: url, content: content, placeholder: { _ in placeholder() })
+    }
 
     private var image: UIImage? {
         guard let url else { return nil }
         return ArtworkCache.shared.image(for: url) ?? lastLoaded
     }
 
+    private var isLoading: Bool {
+        url != nil && failedURL != url
+    }
+
     var body: some View {
-        Group {
+        ZStack {
             if let image {
                 content(Image(uiImage: image))
+                    .transition(.opacity)
             } else {
-                placeholder()
+                placeholder(isLoading)
+                    .transition(.opacity)
             }
         }
         .task(id: url) {
             guard let url else { return }
             if let loaded = await ArtworkCache.shared.load(url) {
-                lastLoaded = loaded
+                withAnimation(.easeIn(duration: 0.25)) {
+                    lastLoaded = loaded
+                }
+            } else {
+                failedURL = url
             }
         }
     }

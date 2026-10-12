@@ -13,8 +13,15 @@ final class RadioPlayerModel: ObservableObject {
     @Published private(set) var connectivity: Connectivity = .good
     var isMuted = false { didSet { player?.isMuted = isMuted } }
     /// Stays at 1 on devices, where the phone's own volume sets the level.
-    /// Only the Simulator's stand-in volume slider changes it.
-    var volume: Float = 1 { didSet { player?.volume = volume } }
+    /// Only the Simulator's stand-in volume slider changes it, and the last
+    /// value is remembered so a relaunch doesn't start at full volume.
+    var volume: Float = UserDefaults.standard.object(forKey: RadioPlayerModel.volumeKey) as? Float ?? 1 {
+        didSet {
+            player?.volume = volume
+            UserDefaults.standard.set(volume, forKey: Self.volumeKey)
+        }
+    }
+    private static let volumeKey = "playerVolume"
     @Published private(set) var isCurrentTrackLiked = false
     @Published private(set) var sleepTimerEndsAt: Date?
 
