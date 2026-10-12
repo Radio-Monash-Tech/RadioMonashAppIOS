@@ -16,10 +16,6 @@ struct ArticleView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if let imageURL = article.imageURL {
-                    ArtworkImage(url: imageURL.squarespaceSized(1500))
-                        .aspectRatio(16 / 10, contentMode: .fit)
-                }
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text(article.title)
