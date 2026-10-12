@@ -8,6 +8,8 @@ struct ArticleView: View {
     @Query private var savedArticles: [SavedArticle]
     @AppStorage("readerTextSize") private var textSize: ReaderTextSize = .standard
     @State private var blocks: [ArticleBlock]?
+    @State private var viewerImage: ViewerImage?
+    @Namespace private var imageNamespace
 
     private var savedCopy: SavedArticle? {
         savedArticles.first { $0.articleID == article.id }
@@ -37,7 +39,9 @@ struct ArticleView: View {
 
                     if let blocks {
                         ForEach(blocks.indices, id: \.self) { index in
-                            ArticleBlockView(block: blocks[index])
+                            ArticleBlockView(block: blocks[index], index: index, imageNamespace: imageNamespace) { url in
+                                viewerImage = ViewerImage(id: index, url: url)
+                            }
                         }
                         .dynamicTypeSize(textSize.dynamicTypeSize)
                     } else {
@@ -51,6 +55,10 @@ struct ArticleView: View {
             .padding(.bottom, 32)
         }
         .navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(item: $viewerImage) { image in
+            ImageViewer(url: image.url)
+                .navigationTransition(.zoom(sourceID: image.id, in: imageNamespace))
+        }
         .task {
             guard blocks == nil else { return }
             blocks = contentBlocks()
@@ -83,11 +91,7 @@ struct ArticleView: View {
     }
 
     private func contentBlocks() -> [ArticleBlock] {
-        let heroKey = article.imageURL?.absoluteString.components(separatedBy: "?").first
-        return ArticleHTMLParser.blocks(from: article.bodyHTML).filter { block in
-            guard case .image(let url, nil) = block else { return true }
-            return url.absoluteString.components(separatedBy: "?").first != heroKey
-        }
+        ArticleHTMLParser.blocks(from: article.bodyHTML)
     }
 
     private func toggleSaved() {
@@ -95,8 +99,17 @@ struct ArticleView: View {
     }
 }
 
+private struct ViewerImage: Identifiable {
+    /// The block index, which doubles as the zoom transition's source ID.
+    let id: Int
+    let url: URL
+}
+
 private struct ArticleBlockView: View {
     let block: ArticleBlock
+    let index: Int
+    let imageNamespace: Namespace.ID
+    let onImageTap: (URL) -> Void
 
     var body: some View {
         switch block {
@@ -125,14 +138,20 @@ private struct ArticleBlockView: View {
             .lineSpacing(5)
         case .image(let url, let caption):
             VStack(alignment: .leading, spacing: 6) {
-                CachedArtwork(url: url.squarespaceSized(1000)) { image in
-                    image.resizable().scaledToFit()
-                } placeholder: {
-                    Rectangle()
-                        .fill(.fill.tertiary)
-                        .frame(height: 220)
+                Button { onImageTap(url) } label: {
+                    CachedArtwork(url: url.squarespaceSized(1000)) { image in
+                        image.resizable().scaledToFit()
+                    } placeholder: {
+                        Rectangle()
+                            .fill(.fill.tertiary)
+                            .frame(height: 220)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .matchedTransitionSource(id: index, in: imageNamespace)
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .buttonStyle(.plain)
+                .accessibilityLabel("Image")
+                .accessibilityHint("Opens the image full screen")
                 if let caption {
                     if caption.characters.count > 140 {
                         Text(caption)
