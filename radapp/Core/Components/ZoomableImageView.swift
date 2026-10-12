@@ -37,8 +37,7 @@ struct ImageViewer: View {
                         .font(.body.weight(.semibold))
                         .padding(6)
                 }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
+                .modifier(CloseButtonStyle())
                 .padding(.trailing, 16)
                 .transition(.opacity)
             }
@@ -54,6 +53,28 @@ struct ImageViewer: View {
                 loadFailed = fullImage == nil
             }
         }
+    }
+}
+
+private struct CloseButtonStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+        } else {
+            content.buttonStyle(MaterialCircleButtonStyle())
+        }
+    }
+}
+
+private struct MaterialCircleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(width: 44, height: 44)
+            .background(.ultraThinMaterial, in: Circle())
+            .contentShape(Circle())
+            .opacity(configuration.isPressed ? 0.6 : 1)
     }
 }
 

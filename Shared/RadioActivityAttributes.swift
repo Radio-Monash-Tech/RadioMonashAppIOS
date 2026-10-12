@@ -7,11 +7,9 @@ nonisolated struct RadioActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var title: String
         var artist: String
-        var showBilling: String?
         var isPlaying: Bool
         var isLiked: Bool
-        /// Window the progress bar fills across: the on-air show when the
-        /// schedule knows it, otherwise the current track.
+        /// Window the progress bar fills across: the current track.
         var progressStart: Date?
         var progressEnd: Date?
         /// Track cover saved in `WidgetArtwork.directory`. `nil` shows the station logo.

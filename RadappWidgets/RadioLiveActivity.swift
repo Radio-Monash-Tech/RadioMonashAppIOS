@@ -22,7 +22,7 @@ struct RadioLiveActivity: Widget {
                     ActivityControls(state: state, size: 40)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    TrackText(state: state, compact: true)
+                    TrackText(state: state)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     ShowProgressBar(window: state.progressWindow)
@@ -58,7 +58,7 @@ private struct LockScreenView: View {
 
             HStack(spacing: 14) {
                 TrackArtwork(fileName: state.artworkFileName, size: 64)
-                TrackText(state: state, compact: false)
+                TrackText(state: state)
                 Spacer(minLength: 8)
                 ActivityControls(state: state, size: 44)
             }
@@ -72,7 +72,6 @@ private struct LockScreenView: View {
 
 private struct TrackText: View {
     let state: RadioActivityAttributes.ContentState
-    let compact: Bool
 
     var body: some View {
         // Live Activities can't animate, so long names wrap and shrink
@@ -86,12 +85,6 @@ private struct TrackText: View {
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
                 .lineLimit(1)
-            if let billing = state.showBilling, !compact {
-                Text(billing)
-                    .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.4))
-                    .lineLimit(1)
-            }
         }
         .minimumScaleFactor(0.8)
         .fixedSize(horizontal: false, vertical: true)
@@ -171,14 +164,14 @@ private struct ShowProgressBar: View {
     RadioLiveActivity()
 } contentStates: {
     RadioActivityAttributes.ContentState(
-        title: "Wedding Riff", artist: "Mellowing", showBilling: "Afternoon Drift with Kaia",
+        title: "Wedding Riff", artist: "Mellowing",
         isPlaying: true, isLiked: false,
-        progressStart: .now.addingTimeInterval(-40 * 60), progressEnd: .now.addingTimeInterval(80 * 60)
+        progressStart: .now.addingTimeInterval(-90), progressEnd: .now.addingTimeInterval(120)
     )
     RadioActivityAttributes.ContentState(
         title: "Nobody's Business But Mine (Extended Live Session Version)",
-        artist: "Peach Fuzz & The Midnight Collective", showBilling: "Afternoon Drift with Kaia",
+        artist: "Peach Fuzz & The Midnight Collective",
         isPlaying: true, isLiked: true,
-        progressStart: .now.addingTimeInterval(-40 * 60), progressEnd: .now.addingTimeInterval(80 * 60)
+        progressStart: .now.addingTimeInterval(-90), progressEnd: .now.addingTimeInterval(120)
     )
 }

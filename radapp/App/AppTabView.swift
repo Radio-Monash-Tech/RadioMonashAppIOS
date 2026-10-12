@@ -31,16 +31,16 @@ struct AppTabView: View {
                 LiveRadioView()
             }
             Tab("Schedule", systemImage: "calendar", value: .schedule) {
-                ScheduleView()
+                ScheduleView().modifier(miniPlayerInset)
             }
             Tab("Journalism", systemImage: "newspaper", value: .journalism) {
-                JournalismView()
+                JournalismView().modifier(miniPlayerInset)
             }
             Tab("Library", systemImage: "books.vertical", value: .library) {
-                LibraryView()
+                LibraryView().modifier(miniPlayerInset)
             }
             Tab(value: .search, role: .search) {
-                SearchView()
+                SearchView().modifier(miniPlayerInset)
             }
         }
         .modifier(MiniPlayerAccessory(isEnabled: selection != .live) { selection = .live })
@@ -57,6 +57,10 @@ struct AppTabView: View {
         .task(id: ReminderInputs(shows: schedule.shows, followed: followed.rawValue, isEnabled: showReminders)) {
             await ShowReminderScheduler.sync(shows: schedule.shows, followed: followed, isEnabled: showReminders)
         }
+    }
+
+    private var miniPlayerInset: LegacyMiniPlayerInset {
+        LegacyMiniPlayerInset(isEnabled: selection != .live) { selection = .live }
     }
 }
 
@@ -76,9 +80,34 @@ private struct MiniPlayerAccessory: ViewModifier {
             content.tabViewBottomAccessory(isEnabled: isEnabled) {
                 MiniPlayer(onOpen: onOpen)
             }
-        } else {
+        } else if #available(iOS 26, *) {
             content.tabViewBottomAccessory {
                 MiniPlayer(onOpen: onOpen)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+/// Before iOS 26 there's no tab bar accessory, so each tab pins the mini player just above the tab bar.
+private struct LegacyMiniPlayerInset: ViewModifier {
+    let isEnabled: Bool
+    let onOpen: () -> Void
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content
+        } else {
+            content.safeAreaInset(edge: .bottom, spacing: 0) {
+                if isEnabled {
+                    MiniPlayer(onOpen: onOpen)
+                        .frame(height: 56)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 6)
+                }
             }
         }
     }

@@ -521,18 +521,15 @@ final class RadioPlayerModel: ObservableObject {
         case .idle, .failed:
             liveActivity.sync(nil, canStart: false)
         case .connecting, .playing, .paused:
-            let onAir = schedule?.onAir()
             let trackEnd = nowPlaying.duration.flatMap { duration in nowPlaying.startedAt.map { $0 + duration } }
             liveActivity.sync(
                 RadioActivityAttributes.ContentState(
                     title: displayTitle,
                     artist: displayArtist ?? "",
-                    showBilling: onAir.map { LiveShow(name: $0.series.title, host: $0.series.hosts.first).billing }
-                        ?? liveShow?.billing,
                     isPlaying: state == .playing,
                     isLiked: isCurrentTrackLiked,
-                    progressStart: onAir?.start ?? nowPlaying.startedAt,
-                    progressEnd: onAir?.end ?? trackEnd,
+                    progressStart: nowPlaying.startedAt,
+                    progressEnd: trackEnd,
                     artworkFileName: widgetArtworkFileName
                 ),
                 canStart: state == .playing

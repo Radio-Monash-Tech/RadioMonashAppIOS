@@ -41,22 +41,14 @@ struct LiveRadioView: View {
 
                 HeartBurstOverlay(trigger: likeBurstTrigger)
             }
-            .navigationTitle(model.liveShow?.name ?? "Radio Monash")
+            .navigationTitle("Radio Monash")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Replaces the plain title so long show names scroll instead
-                // of cutting off. The title above still names the back button.
-                ToolbarItem(placement: .principal) {
-                    MarqueeText(model.liveShow?.name ?? "Radio Monash", font: .headline, alignment: .center)
-                        .accessibilityAddTraits(.isHeader)
-                }
-                .sharedBackgroundVisibility(.hidden)
-
                 ToolbarItem(placement: .topBarLeading) {
                     ConnectionQualityBadge(connectivity: model.connectivity)
                         .fixedSize()
                 }
-                .sharedBackgroundVisibility(.hidden)
+                .hidingSharedBackground()
             }
             .sheet(isPresented: $showingPlatformSheet) {
                 PlatformSheet(track: model.nowPlaying)
@@ -161,5 +153,17 @@ private extension View {
         listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
+    }
+}
+
+private extension ToolbarContent {
+    /// iOS 26 puts toolbar items on a shared glass background; earlier versions have none to hide.
+    @ToolbarContentBuilder
+    func hidingSharedBackground() -> some ToolbarContent {
+        if #available(iOS 26, *) {
+            sharedBackgroundVisibility(.hidden)
+        } else {
+            self
+        }
     }
 }
