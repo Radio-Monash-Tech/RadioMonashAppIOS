@@ -56,5 +56,5 @@ struct LibraryView: View {
     LibraryView()
         .environmentObject(RadioPlayerModel())
         .environmentObject(ScheduleStore())
-        .modelContainer(for: [FavouriteTrack.self, SavedArticle.self], inMemory: true)
+        .modelContainer(for: [FavouriteTrack.self, SavedArticle.self, ListeningSegment.self], inMemory: true)
 }

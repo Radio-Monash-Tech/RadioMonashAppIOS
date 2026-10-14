@@ -6,9 +6,9 @@ import SwiftData
 @MainActor
 final class RadioPlayerModel: ObservableObject {
 
-    @Published private(set) var state: StreamState = .idle
+    @Published private(set) var state: StreamState = .idle { didSet { trackListening() } }
     @Published private(set) var nowPlaying: NowPlaying = .offAir
-    @Published private(set) var liveShow: LiveShow?
+    @Published private(set) var liveShow: LiveShow? { didSet { trackListening() } }
     @Published private(set) var history: [PlayedTrack] = []
     @Published private(set) var connectivity: Connectivity = .good
     var isMuted = false { didSet { player?.isMuted = isMuted } }
@@ -31,6 +31,7 @@ final class RadioPlayerModel: ObservableObject {
     private let client = RadioCultClient.shared
     private let modelContext: ModelContext?
     private let schedule: ScheduleStore?
+    private let listening: ListeningTracker?
     private let liveActivity = LiveActivityController()
     private let widgetArtwork = WidgetArtworkStore()
     private var widgetArtworkFileName: String?
@@ -60,6 +61,7 @@ final class RadioPlayerModel: ObservableObject {
     init(modelContext: ModelContext? = nil, schedule: ScheduleStore? = nil) {
         self.modelContext = modelContext
         self.schedule = schedule
+        listening = modelContext.map(ListeningTracker.init)
     }
 
     var isOnAir: Bool { liveShow != nil }
@@ -510,6 +512,26 @@ final class RadioPlayerModel: ObservableObject {
 
     private func setIfChanged<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<RadioPlayerModel, Value>, _ value: Value) {
         if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
+    }
+
+    // MARK: Listening statistics
+
+    /// The show being listened to, linked to its schedule entry when the
+    /// schedule has it so Listening Statistics can open the show's page.
+    private var listeningShow: ListeningTracker.Show? {
+        guard let liveShow else { return nil }
+        let series = schedule?.onAir()?.series
+        let matches = series?.title.localizedCaseInsensitiveCompare(liveShow.name) == .orderedSame
+        return .init(name: liveShow.name, seriesID: matches ? series?.id : nil)
+    }
+
+    private func trackListening() {
+        listening?.update(state: state, show: listeningShow)
+    }
+
+    func resetListeningStatistics() {
+        listening?.reset()
+        trackListening()
     }
 
     // MARK: Live Activity

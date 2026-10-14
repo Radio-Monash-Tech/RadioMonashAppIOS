@@ -21,7 +21,7 @@ struct radappApp: App {
     init() {
         let container: ModelContainer
         do {
-            container = try ModelContainer(for: FavouriteTrack.self, SavedArticle.self)
+            container = try ModelContainer(for: FavouriteTrack.self, SavedArticle.self, ListeningSegment.self)
         } catch {
             fatalError("Couldn't open the local database: \(error)")
         }
