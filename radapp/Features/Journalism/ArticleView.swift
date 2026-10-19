@@ -53,6 +53,7 @@ struct ArticleView: View {
                 .padding(.horizontal, 20)
             }
             .padding(.bottom, 32)
+            .readableWidthInLandscape()
         }
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(item: $viewerImage) { image in

@@ -7,17 +7,61 @@ struct JournalismView: View {
     @Environment(\.accentChoice) private var accent
     @Query private var savedArticles: [SavedArticle]
     @State private var path: [Article] = []
+    @Environment(\.isLandscapePhone) private var isLandscape
+
+    private var savedByID: [String: SavedArticle] {
+        Dictionary(savedArticles.map { ($0.articleID, $0) }, uniquingKeysWith: { first, _ in first })
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
-            List {
-                content
+            Group {
+                if isLandscape, let lead = journalism.articles.first {
+                    // Latest story stays put on the left; the rest scroll on the right.
+                    HStack(alignment: .top, spacing: 0) {
+                        ScrollView {
+                            leadCard(lead)
+                                .padding(16)
+                        }
+                        .frame(maxWidth: .infinity)
+                        articleList
+                            .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    articleList
+                }
             }
-            .listStyle(.plain)
             .navigationTitle("Journalism")
             .refreshable { await journalism.load() }
             .task { await journalism.loadIfNeeded() }
             .navigationDestination(for: Article.self) { ArticleView(article: $0) }
+        }
+    }
+
+    private var articleList: some View {
+        List {
+            content
+        }
+        .listStyle(.plain)
+    }
+
+    /// The lead story in the landscape sidebar. It isn't a list row, so saving
+    /// moves from a swipe to a long-press menu.
+    private func leadCard(_ article: Article) -> some View {
+        let savedCopy = savedByID[article.id]
+        return Button {
+            path.append(article)
+        } label: {
+            FeatureCard(article: article, isSaved: savedCopy != nil)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button {
+                modelContext.toggleSaved(article, existing: savedCopy)
+            } label: {
+                Label(savedCopy == nil ? "Save" : "Unsave",
+                      systemImage: savedCopy == nil ? "bookmark.fill" : "bookmark.slash.fill")
+            }
         }
     }
 
@@ -56,8 +100,10 @@ struct JournalismView: View {
                 .articleListRow()
             }
         } else {
-            let saved = Dictionary(savedArticles.map { ($0.articleID, $0) }, uniquingKeysWith: { first, _ in first })
-            ForEach(Array(journalism.articles.enumerated()), id: \.element.id) { index, article in
+            let saved = savedByID
+            // In landscape the lead story is in the sidebar, so the list starts at the second.
+            let listed = Array(journalism.articles.enumerated()).dropFirst(isLandscape ? 1 : 0)
+            ForEach(listed, id: \.element.id) { index, article in
                 let savedCopy = saved[article.id]
                 Button {
                     path.append(article)

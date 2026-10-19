@@ -11,6 +11,7 @@ struct LiveRadioView: View {
     @State private var showingPlatformSheet = false
     @State private var path = NavigationPath()
     @State private var likeBurstTrigger = 0
+    @Environment(\.isLandscapePhone) private var isLandscape
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -20,7 +21,9 @@ struct LiveRadioView: View {
                 GeometryReader { viewport in
                     List {
                         playerSection
-                            .frame(minHeight: viewport.size.height)
+                            // In landscape, cap the height too so the artwork shrinks to fit above the tab bar.
+                            .frame(minHeight: viewport.size.height,
+                                   maxHeight: isLandscape ? viewport.size.height : nil)
                             .plainListRow()
 
                         RecentlyPlayedHeader(showsSeeAll: !model.history.isEmpty) {
@@ -89,22 +92,54 @@ struct LiveRadioView: View {
     }
 
     private var playerSection: some View {
+        Group {
+            if isLandscape {
+                landscapePlayer
+            } else {
+                portraitPlayer
+            }
+        }
+        .animation(.snappy, value: isLandscape)
+    }
+
+    private var portraitPlayer: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            GlowingArtwork(
-                url: model.nowPlaying.artworkURL,
-                showsStationLogo: model.showsStationLogo,
-                isBusy: model.isBusy,
-                onDoubleTap: { showingPlatformSheet = true }
-            )
+            artwork
             Spacer().frame(height: 32)
-            MetadataDisplay(state: model.state, title: model.displayTitle, artist: model.displayArtist, onRetry: model.retry)
+            metadata
 
             Spacer(minLength: 0)
 
             controls
         }
+    }
+
+    /// Artwork on the left, titles and controls on the right.
+    private var landscapePlayer: some View {
+        HStack(spacing: 0) {
+            artwork
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
+                metadata
+                Spacer(minLength: 0)
+                controls
+            }
+        }
+    }
+
+    private var artwork: some View {
+        GlowingArtwork(
+            url: model.nowPlaying.artworkURL,
+            showsStationLogo: model.showsStationLogo,
+            isBusy: model.isBusy,
+            onDoubleTap: { showingPlatformSheet = true }
+        )
+    }
+
+    private var metadata: some View {
+        MetadataDisplay(state: model.state, title: model.displayTitle, artist: model.displayArtist, onRetry: model.retry)
     }
 
     private var controls: some View {

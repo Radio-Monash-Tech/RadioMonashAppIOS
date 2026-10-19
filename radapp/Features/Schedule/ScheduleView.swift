@@ -6,18 +6,22 @@ struct ScheduleView: View {
     @State private var selectedDay = Calendar.melbourne.startOfDay(for: .now)
     @State private var now = Date()
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
+    @Environment(\.isLandscapePhone) private var isLandscape
 
     var body: some View {
         NavigationStack {
-            List {
-                DayStrip(days: schedule.week, selection: $selectedDay)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-
-                content
+            Group {
+                if isLandscape {
+                    // Days become a sidebar so the shows get the full height.
+                    HStack(spacing: 0) {
+                        DayStrip(days: schedule.week, selection: $selectedDay, axis: .vertical)
+                            .frame(width: 76)
+                        showList
+                    }
+                } else {
+                    showList
+                }
             }
-            .listStyle(.plain)
             .navigationTitle("Schedule")
             .refreshable { await schedule.load() }
             .task { await schedule.loadIfNeeded() }
@@ -29,6 +33,20 @@ struct ScheduleView: View {
             }
             .navigationDestination(for: ShowSeries.self) { ShowDetailView(series: $0) }
         }
+    }
+
+    private var showList: some View {
+        List {
+            if !isLandscape {
+                DayStrip(days: schedule.week, selection: $selectedDay)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
+
+            content
+        }
+        .listStyle(.plain)
     }
 
     @ViewBuilder
@@ -88,10 +106,15 @@ struct ScheduleView: View {
 private struct DayStrip: View {
     let days: [Date]
     @Binding var selection: Date
+    var axis: Axis = .horizontal
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+        let stack = axis == .horizontal
+            ? AnyLayout(HStackLayout(spacing: 8))
+            : AnyLayout(VStackLayout(spacing: 8))
+
+        ScrollView(axis == .horizontal ? .horizontal : .vertical, showsIndicators: false) {
+            stack {
                 ForEach(days, id: \.self) { day in
                     let isSelected = Calendar.melbourne.isDate(day, inSameDayAs: selection)
                     Button {
@@ -115,7 +138,8 @@ private struct DayStrip: View {
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(axis == .horizontal ? .horizontal : .vertical, 16)
+            .frame(maxWidth: axis == .vertical ? .infinity : nil)
         }
         .sensoryFeedback(.selection, trigger: selection)
     }
