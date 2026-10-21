@@ -23,7 +23,8 @@ struct AppTabView: View {
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @AppStorage(TextSizePreference.storageKey) private var textSizeOffset = 0
     @State private var selection: AppTab = .live
-
+    
+    // increase or adjust system-wide
     var body: some View {
         TabView(selection: $selection) {
             Tab("Live", systemImage: "dot.radiowaves.left.and.right", value: .live) {
@@ -64,7 +65,7 @@ struct AppTabView: View {
     }
 }
 
-/// Everything the reminder schedule depends on; a change to any of them reschedules.
+// Everything the reminder schedule depends on; a change to any of them reschedules.
 private struct ReminderInputs: Equatable {
     let shows: [ScheduledShow]
     let followed: String
@@ -90,7 +91,7 @@ private struct MiniPlayerAccessory: ViewModifier {
     }
 }
 
-/// Before iOS 26 there's no tab bar accessory, so each tab pins the mini player just above the tab bar.
+// Before iOS 26 there's no tab bar accessory, so each tab pins the mini player just above the tab bar.
 private struct LegacyMiniPlayerInset: ViewModifier {
     let isEnabled: Bool
     let onOpen: () -> Void

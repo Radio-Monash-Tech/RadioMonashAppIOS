@@ -11,8 +11,7 @@ import UserNotifications
 
 @main
 struct radappApp: App {
-    /// One player for the whole app so the stream survives tab switches and
-    /// the mini player and Live tab always show the same state.
+
     @StateObject private var player: RadioPlayerModel
     @StateObject private var schedule: ScheduleStore
     @StateObject private var journalism = JournalismStore()
