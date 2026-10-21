@@ -58,11 +58,10 @@ struct SettingsView: View {
             }
 
             Section {
-                
                 // inreament and decreament button
                 Stepper(value: $textSizeOffset, in: TextSizePreference.range) {
                     Text("Text Size")
-                    Text(TTextSizePreference.label(for: textSizeOffset))
+                    Text(TextSizePreference.label(for: textSizeOffset))
                 }
                 Toggle(isOn: $increaseContrast) {
                     Text("Increase Contrast")

@@ -12,8 +12,6 @@ enum AppTab: Hashable {
     case live, schedule, journalism, library, search
 }
 
-/// Root of the app: the system tab bar, one independent `NavigationStack`
-/// per tab, and the docked mini player in the tab bar's accessory slot.
 struct AppTabView: View {
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
@@ -23,7 +21,7 @@ struct AppTabView: View {
     @AppStorage(AccentChoice.storageKey, store: AccentChoice.store) private var accent: AccentChoice = .blue
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
-    @AppStorage(TextSuzePreferebce.storageKey) private var textSizeOffset = 0
+    @AppStorage(TextSizePreference.storageKey) private var textSizeOffset = 0
     @State private var selection: AppTab = .live
 
     var body: some View {
@@ -47,6 +45,7 @@ struct AppTabView: View {
         .modifier(MiniPlayerAccessory(isEnabled: selection != .live) { selection = .live })
         .preferredColorScheme(appearance.colorScheme)
         .increasedContrast(increaseContrast)
+        .textSizeOffset(textSizeOffset)
         .tint(accent.color)
         .environment(\.accentChoice, accent)
         .task {
