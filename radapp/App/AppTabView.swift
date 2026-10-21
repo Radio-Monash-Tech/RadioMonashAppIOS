@@ -23,6 +23,7 @@ struct AppTabView: View {
     @AppStorage(AccentChoice.storageKey, store: AccentChoice.store) private var accent: AccentChoice = .blue
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
+    @AppStorage(TextSuzePreferebce.storageKey) private var textSizeOffset = 0
     @State private var selection: AppTab = .live
 
     var body: some View {

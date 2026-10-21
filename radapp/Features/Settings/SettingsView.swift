@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage("newArticleAlerts") private var newArticleAlerts = false
     @AppStorage(AccentChoice.storageKey, store: AccentChoice.store) private var accent: AccentChoice = .blue
     @AppStorage(ContrastPreference.storageKey) private var increaseContrast = false
+    @AppStorage(TextSizePreference.storageKey) private var textSizeOffset = 0
 
     @EnvironmentObject private var player: RadioPlayerModel
     @Environment(\.colorScheme) private var colorScheme
@@ -57,6 +58,12 @@ struct SettingsView: View {
             }
 
             Section {
+                
+                // inreament and decreament button
+                Stepper(value: $textSizeOffset, in: TextSizePreference.range) {
+                    Text("Text Size")
+                    Text(TTextSizePreference.label(for: textSizeOffset))
+                }
                 Toggle(isOn: $increaseContrast) {
                     Text("Increase Contrast")
                     Text("Darker text, stronger colours and solid backgrounds")
