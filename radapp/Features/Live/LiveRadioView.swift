@@ -56,6 +56,7 @@ struct LiveRadioView: View {
             }
             .sheet(isPresented: $showingPlatformSheet) {
                 PlatformSheet(track: model.nowPlaying)
+                    .colourVisionFilter()
             }
             .trackShareSheet(for: $sharingTrack)
             .navigationDestination(for: LiveRoute.self) { destination(for: $0) }

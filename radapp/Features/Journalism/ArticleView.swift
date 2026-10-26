@@ -58,6 +58,7 @@ struct ArticleView: View {
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(item: $viewerImage) { image in
             ImageViewer(url: image.url)
+                .colourVisionFilter()
                 .navigationTransition(.zoom(sourceID: image.id, in: imageNamespace))
         }
         .task {

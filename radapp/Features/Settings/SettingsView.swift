@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage("newArticleAlerts") private var newArticleAlerts = false
     @AppStorage(AccentChoice.storageKey, store: AccentChoice.store) private var accent: AccentChoice = .blue
     @AppStorage(ContrastPreference.storageKey) private var increaseContrast = false
+    @AppStorage(ColourVision.storageKey, store: ColourVision.store) private var colourVision: ColourVision = .standard
     @AppStorage(TextSizePreference.storageKey) private var textSizeOffset = 0
 
     @EnvironmentObject private var player: RadioPlayerModel
@@ -67,6 +68,25 @@ struct SettingsView: View {
                     Text("Increase Contrast")
                     Text("Darker text, stronger colours and solid backgrounds")
                 }
+                Picker(selection: $colourVision) {
+                    ForEach(ColourVisionGroup.allCases) { group in
+                        Section(group.title) {
+                            ForEach(group.types) { type in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(type.label)
+                                    Text(type.summary)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .tag(type)
+                            }
+                        }
+                    }
+                } label: {
+                    Text("Colour Vision")
+                    Text("Colour filter over the whole app")
+                }
+                .pickerStyle(.navigationLink)
             } header: {
                 Text("Accessibility")
             } footer: {
@@ -117,6 +137,31 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Sections of the Colour Vision picker, by which colours each type confuses.
+private enum ColourVisionGroup: CaseIterable, Identifiable {
+    case standard, redGreen, blueYellow, noColour
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .standard: ""
+        case .redGreen: "Red–green"
+        case .blueYellow: "Blue–yellow"
+        case .noColour: "No colour"
+        }
+    }
+
+    var types: [ColourVision] {
+        switch self {
+        case .standard: [.standard]
+        case .redGreen: [.protanomaly, .protanopia, .deuteranomaly, .deuteranopia]
+        case .blueYellow: [.tritanomaly, .tritanopia]
+        case .noColour: [.monochromacy]
+        }
     }
 }
 

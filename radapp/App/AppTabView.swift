@@ -19,6 +19,7 @@ struct AppTabView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @AppStorage(ContrastPreference.storageKey) private var increaseContrast = false
     @AppStorage(AccentChoice.storageKey, store: AccentChoice.store) private var accent: AccentChoice = .blue
+    @AppStorage(ColourVision.storageKey, store: ColourVision.store) private var colourVision: ColourVision = .standard
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @AppStorage(TextSizePreference.storageKey) private var textSizeOffset = 0
@@ -49,6 +50,7 @@ struct AppTabView: View {
         .textSizeOffset(textSizeOffset)
         .tint(accent.color)
         .environment(\.accentChoice, accent)
+        .colourVisionFilter(colourVision)
         .task {
             player.prepareSession()
             async let scheduleLoad: Void = schedule.loadIfNeeded()
