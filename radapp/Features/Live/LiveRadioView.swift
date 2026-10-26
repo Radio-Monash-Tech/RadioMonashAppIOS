@@ -126,7 +126,7 @@ struct LiveRadioView: View {
         }
     }
 
-    /// Artwork on the left, titles and controls on the right.
+    // Artwork on the left, titles and controls on the right.
     private var landscapePlayer: some View {
         HStack(spacing: 0) {
             artwork
@@ -144,7 +144,8 @@ struct LiveRadioView: View {
             url: model.nowPlaying.artworkURL,
             showsStationLogo: model.showsStationLogo,
             isBusy: model.isBusy,
-            onDoubleTap: { showingPlatformSheet = true }
+            // Nothing to look up while the station logo stands in for an unidentified track.
+            onDoubleTap: { if !model.showsStationLogo { showingPlatformSheet = true } }
         )
     }
 
@@ -202,7 +203,7 @@ private extension View {
 }
 
 private extension ToolbarContent {
-    /// iOS 26 puts toolbar items on a shared glass background; earlier versions have none to hide.
+    // iOS 26 puts toolbar items on a shared glass background; earlier versions have none to hide.
     @ToolbarContentBuilder
     func hidingSharedBackground() -> some ToolbarContent {
         if #available(iOS 26, *) {

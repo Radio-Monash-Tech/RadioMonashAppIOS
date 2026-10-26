@@ -1,12 +1,22 @@
 import SwiftUI
 
-/// "Listen on" bottom sheet, styled to match the Android reference app's
-/// `PlatformLinksBottomSheet` (dark card, brand-colored platform badges).
+// "Listen on" bottom sheet, styled to match the Android reference app's
+// `PlatformLinksBottomSheet` (dark card, platform badges). Apple Music opens
+// the exact song; every other service goes through the song's Song.link page.
 struct PlatformSheet: View {
     let track: NowPlaying
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
-    private let platforms = ["Spotify", "Apple Music", "YouTube Music", "Bandcamp", "Deezer"]
+    @State private var lookup = Lookup.loading
+    @State private var attempt = 0
+
+    private enum Lookup {
+        case loading
+        case found(ITunesTrack)
+        case notFound
+        case failed
+    }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -23,16 +33,8 @@ struct PlatformSheet: View {
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 16)
 
-            VStack(spacing: 12) {
-                ForEach(platforms, id: \.self) { name in
-                    Button {
-                        dismiss()
-                    } label: {
-                        PlatformRow(name: name)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+            content
+                .frame(minHeight: 176, alignment: .top)
         }
         .padding(.horizontal, 24)
         .padding(.top, 24)
@@ -42,22 +44,89 @@ struct PlatformSheet: View {
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
+        .task(id: attempt) {
+            lookup = .loading
+            do {
+                let match = try await ITunesClient.shared.track(title: track.title, artist: track.artist, duration: track.duration)
+                lookup = match.map(Lookup.found) ?? .notFound
+            } catch {
+                lookup = .failed
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch lookup {
+        case .loading:
+            ProgressView()
+                .padding(.top, 48)
+        case .found(let match):
+            VStack(spacing: 12) {
+                rowButton {
+                    openURL(match.trackViewURL)
+                    dismiss()
+                } label: {
+                    PlatformRow(title: "Apple Music") {
+                        Image("AppleMusicLogo").resizable().scaledToFit()
+                    }
+                }
+                // Kept in the app; the page's platform links still hand off to their apps.
+                rowButton {
+                    SystemPresenter.openInApp(match.songLinkURL)
+                } label: {
+                    PlatformRow(title: "Other platforms", subtitle: "Spotify, YouTube Music, Deezer and more") {
+                        OtherPlatformsBadge()
+                    }
+                }
+            }
+        case .notFound:
+            ContentUnavailableView(
+                "Not on Streaming Services",
+                systemImage: "music.note.list",
+                description: Text("Local and student tracks often aren't released online.")
+            )
+        case .failed:
+            ContentUnavailableView {
+                Label("Couldn't Load Links", systemImage: "wifi.exclamationmark")
+            } description: {
+                Text("Check your connection and try again.")
+            } actions: {
+                Button("Try Again") { attempt += 1 }
+            }
+        }
+    }
+
+    private func rowButton(action: @escaping () -> Void, @ViewBuilder label: () -> some View) -> some View {
+        Button(action: action) {
+            label()
+        }
+        .buttonStyle(.plain)
     }
 }
 
-private struct PlatformRow: View {
-    let name: String
+private struct PlatformRow<Icon: View>: View {
+    let title: String
+    var subtitle: String?
+    @ViewBuilder let icon: Icon
 
     var body: some View {
         HStack(spacing: 16) {
-            Circle()
-                .fill(PlayerPalette.platformColor(name))
+            icon
                 .frame(width: 48, height: 48)
-                .overlay(Image(systemName: "music.note").foregroundStyle(.white))
+                // The row's text already names the platform.
+                .accessibilityHidden(true)
 
-            Text(name)
-                .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(.primary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             Spacer()
 
@@ -67,5 +136,29 @@ private struct PlatformRow: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
         .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// A 2×2 grid of service logos standing in for Song.link, which has no app icon of its own.
+private struct OtherPlatformsBadge: View {
+    var body: some View {
+        Grid(horizontalSpacing: 4, verticalSpacing: 4) {
+            GridRow {
+                logo("SpotifyLogo")
+                logo("DeezerLogo")
+            }
+            GridRow {
+                logo("BandcampLogo")
+                Image(systemName: "ellipsis.circle.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func logo(_ name: String) -> some View {
+        Image(name).resizable().scaledToFit()
     }
 }

@@ -18,8 +18,8 @@ struct ITunesClient {
 
     private let searchURL = URL(string: "https://itunes.apple.com/search")!
 
-    /// The matching song, or nil when it isn't in the catalogue (common for
-    /// student and live recordings). `duration` breaks ties between releases.
+    // The matching song, or nil when it isn't in the catalogue (common for
+    // student and live recordings). `duration` breaks ties between releases.
     func track(title: String, artist: String, duration: TimeInterval? = nil) async throws -> ITunesTrack? {
         let term = TrackName.searchTerm(title: title, artist: artist)
         guard !term.isEmpty else { return nil }
@@ -28,7 +28,7 @@ struct ITunesClient {
         components.queryItems = [
             URLQueryItem(name: "term", value: term),
             URLQueryItem(name: "entity", value: "song"),
-            URLQueryItem(name: "limit", value: "5"),
+            URLQueryItem(name: "limit", value: "25"),
             URLQueryItem(name: "country", value: "AU"),
         ]
 

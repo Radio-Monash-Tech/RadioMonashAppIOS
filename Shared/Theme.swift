@@ -23,17 +23,6 @@ enum PlayerPalette {
         highContrastDark: UIColor(red: 1.0, green: 0.541, blue: 0.502, alpha: 1)     // #FF8A80
     )
     static let favoriteFilled = Color(red: 0.545, green: 0, blue: 0)      // #8B0000
-
-    static func platformColor(_ name: String) -> Color {
-        switch name.lowercased() {
-        case "spotify": return Color(red: 0.114, green: 0.725, blue: 0.329)     // #1DB954
-        case "apple music": return Color(red: 1.0, green: 0.306, blue: 0.420)   // #FF4E6B
-        case "youtube music", "youtube": return Color(red: 1.0, green: 0, blue: 0)
-        case "bandcamp": return Color(red: 0.114, green: 0.635, blue: 0.761)    // #1DA1C2
-        case "deezer": return Color(red: 0.635, green: 0.220, blue: 1.0)        // #A238FF
-        default: return Color(white: 0.4)
-        }
-    }
 }
 
 private extension Color {
