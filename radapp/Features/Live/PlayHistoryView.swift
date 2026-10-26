@@ -5,6 +5,7 @@ struct PlayHistoryView: View {
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
     @Query private var favourites: [FavouriteTrack]
+    @State private var sharingTrack: ShareableTrack?
 
     var body: some View {
         Group {
@@ -47,10 +48,18 @@ struct PlayHistoryView: View {
                                   systemImage: isLiked ? "heart.slash.fill" : "heart.fill")
                         }
                         .tint(isLiked ? .gray : PlayerPalette.error)
+
+                        Button {
+                            sharingTrack = track.shareable
+                        } label: {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                        .tint(.orange)
                     }
                 }
             }
         }
+        .trackShareSheet(for: $sharingTrack)
         .navigationTitle("Played Earlier")
     }
 }

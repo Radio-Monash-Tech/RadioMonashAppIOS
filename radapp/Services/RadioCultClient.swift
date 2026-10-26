@@ -15,7 +15,7 @@ struct RadioCultClient {
     static let shared = RadioCultClient()
 
     private let baseURL = URL(string: "https://api.radiocult.fm/api/station/radio-monash")!
-    // TODO: move to a gitignored config file before this repo goes public.
+    // move to a gitignored config file before this repo goes public.
     private let apiKey = "pk_4bf03d42acb4441c96c73e33c8b22491"
 
     func liveStatus() async throws -> ScheduleLiveResponse {

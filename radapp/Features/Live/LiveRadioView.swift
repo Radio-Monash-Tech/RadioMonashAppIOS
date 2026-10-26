@@ -9,6 +9,7 @@ struct LiveRadioView: View {
     @EnvironmentObject private var schedule: ScheduleStore
     @Query private var favourites: [FavouriteTrack]
     @State private var showingPlatformSheet = false
+    @State private var sharingTrack: ShareableTrack?
     @State private var path = NavigationPath()
     @State private var likeBurstTrigger = 0
     @Environment(\.isLandscapePhone) private var isLandscape
@@ -56,6 +57,7 @@ struct LiveRadioView: View {
             .sheet(isPresented: $showingPlatformSheet) {
                 PlatformSheet(track: model.nowPlaying)
             }
+            .trackShareSheet(for: $sharingTrack)
             .navigationDestination(for: LiveRoute.self) { destination(for: $0) }
         }
     }
@@ -86,6 +88,14 @@ struct LiveRadioView: View {
                                   systemImage: isLiked ? "heart.slash.fill" : "heart.fill")
                         }
                         .tint(isLiked ? .gray : PlayerPalette.error)
+                        
+                        // share button
+                        Button {
+                            sharingTrack = track.shareable
+                        } label: {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                        .tint(.orange)
                     }
             }
         }

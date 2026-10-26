@@ -4,6 +4,7 @@ import SwiftData
 struct LikedSongsView: View {
     @EnvironmentObject private var player: RadioPlayerModel
     @Query(sort: \FavouriteTrack.savedAt, order: .reverse) private var tracks: [FavouriteTrack]
+    @State private var sharingTrack: ShareableTrack?
 
     var body: some View {
         Group {
@@ -17,13 +18,31 @@ struct LikedSongsView: View {
                 List {
                     ForEach(tracks) { track in
                         LikedSongRow(track: track)
+                            // Custom swipe actions replace the one `onDelete` provides, so Delete is restated here.
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    player.unlike(track)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                                
+                                // share song
+                                Button {
+                                    sharingTrack = track.shareable
+                                } label: {
+                                    Label("Share", systemImage: "square.and.arrow.up")
+                                }
+                                .tint(.orange)
+                            }
                     }
+                    // Still drives the delete controls in Edit mode.
                     .onDelete { offsets in
                         for index in offsets { player.unlike(tracks[index]) }
                     }
                 }
             }
         }
+        .trackShareSheet(for: $sharingTrack)
         .navigationTitle("Liked Songs")
         .toolbar {
             if !tracks.isEmpty { EditButton() }
