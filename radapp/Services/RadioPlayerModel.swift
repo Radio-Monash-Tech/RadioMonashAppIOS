@@ -12,9 +12,9 @@ final class RadioPlayerModel: ObservableObject {
     @Published private(set) var history: [PlayedTrack] = []
     @Published private(set) var connectivity: Connectivity = .good
     var isMuted = false { didSet { player?.isMuted = isMuted } }
-    /// Stays at 1 on devices, where the phone's own volume sets the level.
-    /// Only the Simulator's stand-in volume slider changes it, and the last
-    /// value is remembered so a relaunch doesn't start at full volume.
+    // Stays at 1 on devices, where the phone's own volume sets the level.
+    // Only the Simulator's stand-in volume slider changes it, and the last
+    // value is remembered so a relaunch doesn't start at full volume.
     var volume: Float = UserDefaults.standard.object(forKey: RadioPlayerModel.volumeKey) as? Float ?? 1 {
         didSet {
             player?.volume = volume
@@ -33,6 +33,8 @@ final class RadioPlayerModel: ObservableObject {
     private let schedule: ScheduleStore?
     private let listening: ListeningTracker?
     private let liveActivity = LiveActivityController()
+    private let nowPlayingCenter = NowPlayingController()
+    private var nowPlayingArtwork: UIImage?
     private let widgetArtwork = WidgetArtworkStore()
     private var widgetArtworkFileName: String?
     private var widgetArtworkTask: Task<Void, Never>?
@@ -112,6 +114,11 @@ final class RadioPlayerModel: ObservableObject {
         observeAudioSession()
         LiveActivityActions.togglePlayback = { [weak self] in self?.togglePlayback() }
         LiveActivityActions.toggleLike = { [weak self] in self?.toggleLike() }
+        nowPlayingCenter.configure(
+            play: { [weak self] in self?.play() },
+            pause: { [weak self] in self?.stop() },
+            toggle: { [weak self] in self?.togglePlayback() }
+        )
         startMetadataPolling()
 
         let resumeOnLaunch = UserDefaults.standard.object(forKey: Self.resumeOnLaunchKey) as? Bool ?? false
@@ -122,10 +129,10 @@ final class RadioPlayerModel: ObservableObject {
         let session = AVAudioSession.sharedInstance()
         do {
             // .playback keeps audio alive when the screen locks and ignores
-            // the silent switch the way a radio should. .mixWithOthers keeps
-            // iOS from adopting us as the Now Playing app, so the Live
-            // Activity is the only Lock Screen player.
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            // the silent switch the way a radio should. Not mixing with other
+            // audio makes us the Now Playing app, which gets the Lock Screen
+            // and Control Centre controls.
+            try session.setCategory(.playback, mode: .default)
             try session.setActive(true)
         } catch {
             state = .failed("Couldn't start audio session.")
@@ -492,20 +499,25 @@ final class RadioPlayerModel: ObservableObject {
         setIfChanged(\.history, Array(recent))
     }
 
-    /// Saves the RadioCult cover for the Live Activity. Unknown tracks, live
-    /// shows and tracks without a cover fall back to the station logo.
+    /// Fetches the RadioCult cover for the Live Activity and the system
+    /// player. Unknown tracks, live shows and tracks without a cover fall
+    /// back to the station logo.
     private func refreshWidgetArtwork() {
         widgetArtworkTask?.cancel()
         guard !showsStationLogo, let url = nowPlaying.artworkURL else {
             widgetArtworkFileName = nil
+            nowPlayingArtwork = nil
             refreshLiveActivity()
             return
         }
         widgetArtworkTask = Task { [weak self] in
             guard let self else { return }
-            let name = await widgetArtwork.save(url)
+            async let name = widgetArtwork.save(url)
+            async let image = ArtworkCache.shared.load(url)
+            let (savedName, loadedImage) = await (name, image)
             guard !Task.isCancelled else { return }
-            widgetArtworkFileName = name
+            widgetArtworkFileName = savedName
+            nowPlayingArtwork = loadedImage
             refreshLiveActivity()
         }
     }
@@ -536,9 +548,10 @@ final class RadioPlayerModel: ObservableObject {
 
     // MARK: Live Activity
 
-    /// Pushes the current state to the Lock Screen Live Activity. Also called
-    /// by Settings when the Live Activity toggle changes.
+    /// Pushes the current state to the Lock Screen Live Activity and the
+    /// system player. Also called by Settings when the Live Activity toggle changes.
     func refreshLiveActivity() {
+        refreshNowPlaying()
         switch state {
         case .idle, .failed:
             liveActivity.sync(nil, canStart: false)
@@ -555,6 +568,21 @@ final class RadioPlayerModel: ObservableObject {
                     artworkFileName: widgetArtworkFileName
                 ),
                 canStart: state == .playing
+            )
+        }
+    }
+
+    private func refreshNowPlaying() {
+        switch state {
+        case .idle, .failed:
+            nowPlayingCenter.clear()
+        case .connecting, .playing, .paused:
+            nowPlayingCenter.update(
+                title: displayTitle,
+                artist: displayArtist,
+                show: liveShow?.name,
+                isPlaying: state == .playing,
+                artwork: nowPlayingArtwork ?? UIImage(named: "StationLogo")
             )
         }
     }

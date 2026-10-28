@@ -4,7 +4,7 @@ import UIKit
 struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @AppStorage(RadioPlayerModel.resumeOnLaunchKey) private var resumeOnLaunch = false
-    @AppStorage(LiveActivityController.enabledKey) private var liveActivityEnabled = true
+    @AppStorage(LiveActivityController.enabledKey) private var liveActivityEnabled = false
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @AppStorage("newArticleAlerts") private var newArticleAlerts = false
     @AppStorage(AccentChoice.storageKey, store: AccentChoice.store) private var accent: AccentChoice = .blue
@@ -103,7 +103,7 @@ struct SettingsView: View {
                 }
                 Toggle(isOn: $liveActivityEnabled) {
                     Text("Live Activity")
-                    Text("Show now playing on the Lock Screen")
+                    Text("Extra Lock Screen card with a Like button")
                 }
                 .onChange(of: liveActivityEnabled) { player.refreshLiveActivity() }
             }

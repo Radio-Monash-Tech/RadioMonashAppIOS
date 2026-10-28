@@ -20,7 +20,7 @@ final class LiveActivityController {
     }
 
     private var isEnabled: Bool {
-        UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true
+        UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? false
     }
 
     /// `nil` ends the activity. A new one is only started when `canStart` is
