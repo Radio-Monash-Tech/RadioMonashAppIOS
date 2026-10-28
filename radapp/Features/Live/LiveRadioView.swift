@@ -145,8 +145,8 @@ struct LiveRadioView: View {
             url: model.nowPlaying.artworkURL,
             showsStationLogo: model.showsStationLogo,
             isBusy: model.isBusy,
-            // Nothing to look up while the station logo stands in for an unidentified track.
-            onDoubleTap: { if !model.showsStationLogo { showingPlatformSheet = true } }
+            // Nothing to look up until RadioCult names the song.
+            onDoubleTap: { if model.isIdentifiedTrack { showingPlatformSheet = true } }
         )
     }
 

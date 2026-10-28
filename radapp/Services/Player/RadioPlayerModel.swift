@@ -54,19 +54,21 @@ final class RadioPlayerModel: ObservableObject {
         audioSession.onEvent = { [weak self] in self?.handle($0) }
     }
 
-    /// While a show is live but no track is identified, the show stands in
-    /// for the track instead of "Radio Monash · Default playlist".
+    /// While a show is on air its name stands in for the track; otherwise
+    /// the song and artist show.
     var displayTitle: String {
-        isIdentifiedTrack ? nowPlaying.title : liveShow?.name ?? nowPlaying.title
+        liveShow?.name ?? nowPlaying.title
     }
 
     var displayArtist: String? {
-        isIdentifiedTrack || liveShow == nil ? nowPlaying.artist : nil
+        liveShow == nil ? nowPlaying.artist : nil
     }
 
-    private var isIdentifiedTrack: Bool { nowPlaying != .offAir }
-    /// The station logo stands in for cover art only while no track is identified.
-    var showsStationLogo: Bool { !isIdentifiedTrack }
+    /// RadioCult named the song on air, so it can be liked or looked up.
+    var isIdentifiedTrack: Bool { nowPlaying != .offAir }
+    /// The station logo stands in for cover art while a show is on air, and
+    /// whenever no track is identified. Otherwise the track's RadioCult cover shows.
+    var showsStationLogo: Bool { liveShow != nil || !isIdentifiedTrack }
     var canLikeCurrentTrack: Bool { favourites != nil && isIdentifiedTrack }
     var isBusy: Bool { state == .connecting }
     private var isActive: Bool { state == .playing || state == .connecting }
