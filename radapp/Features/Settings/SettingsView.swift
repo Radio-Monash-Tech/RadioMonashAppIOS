@@ -32,6 +32,8 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
+                // The Home Screen widget follows this setting too.
+                .onChange(of: appearance) { player.refreshLiveActivity() }
             } header: {
                 Text("Appearance")
             } footer: {

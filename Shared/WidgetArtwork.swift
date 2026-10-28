@@ -15,4 +15,10 @@ nonisolated enum WidgetArtwork {
     static func fileURL(named name: String) -> URL? {
         directory?.appendingPathComponent(name)
     }
+
+    /// A sharper copy of the same cover for Home Screen widgets, which show
+    /// it much larger than the Live Activity does.
+    static func largeFileName(for name: String) -> String {
+        name.replacingOccurrences(of: ".jpg", with: "-large.jpg")
+    }
 }

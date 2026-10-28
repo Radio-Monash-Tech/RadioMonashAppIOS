@@ -59,6 +59,8 @@ struct AppTabView: View {
         }
         .task(id: ReminderInputs(shows: schedule.shows, followed: followed.rawValue, isEnabled: showReminders)) {
             await ShowReminderScheduler.sync(shows: schedule.shows, followed: followed, isEnabled: showReminders)
+            // The widget lists upcoming shows and which are followed.
+            player.refreshLiveActivity()
         }
     }
 

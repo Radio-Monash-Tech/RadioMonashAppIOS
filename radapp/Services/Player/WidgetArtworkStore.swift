@@ -1,12 +1,15 @@
 import CryptoKit
 import UIKit
 
-/// Saves track covers where the Live Activity can read them. Live Activities
-/// won't draw large images, so each cover is shrunk to widget size first.
+/// Saves track covers where the Live Activity and Home Screen widget can read
+/// them. Live Activities won't draw large images, so each cover is saved
+/// small for the activity and larger for the widget.
 @MainActor
 final class WidgetArtworkStore {
     /// Big enough for the 64pt Lock Screen artwork at 3x.
     private let pixelSize: CGFloat = 192
+    /// Big enough for the full-bleed small widget at 3x.
+    private let largePixelSize: CGFloat = 512
 
     /// Returns the saved file's name, or `nil` if the cover couldn't be saved.
     func save(_ url: URL) async -> String? {
@@ -15,21 +18,24 @@ final class WidgetArtworkStore {
         let fileURL = directory.appendingPathComponent(name)
         if FileManager.default.fileExists(atPath: fileURL.path) { return name }
 
+        let largeName = WidgetArtwork.largeFileName(for: name)
         guard let image = await ArtworkCache.shared.load(url),
-              let data = resized(image).jpegData(compressionQuality: 0.8)
+              let data = resized(image, to: pixelSize).jpegData(compressionQuality: 0.8),
+              let largeData = resized(image, to: largePixelSize).jpegData(compressionQuality: 0.8)
         else { return nil }
 
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try largeData.write(to: directory.appendingPathComponent(largeName), options: .atomic)
             try data.write(to: fileURL, options: .atomic)
         } catch {
             return nil
         }
-        removeFiles(in: directory, except: name)
+        removeFiles(in: directory, except: [name, largeName])
         return name
     }
 
-    private func resized(_ image: UIImage) -> UIImage {
+    private func resized(_ image: UIImage, to pixelSize: CGFloat) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let size = CGSize(width: pixelSize, height: pixelSize)
@@ -39,9 +45,9 @@ final class WidgetArtworkStore {
     }
 
     /// Only the current cover is ever shown, so older ones are dropped.
-    private func removeFiles(in directory: URL, except keep: String) {
+    private func removeFiles(in directory: URL, except keep: Set<String>) {
         let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
-        for name in names where name != keep {
+        for name in names where !keep.contains(name) {
             try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
         }
     }

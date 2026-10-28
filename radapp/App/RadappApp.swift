@@ -27,7 +27,10 @@ struct radappApp: App {
         self.container = container
         let schedule = ScheduleStore()
         _schedule = StateObject(wrappedValue: schedule)
-        _player = StateObject(wrappedValue: RadioPlayerModel(modelContext: container.mainContext, schedule: schedule))
+        // Created now rather than when the first view appears, so a widget or
+        // Live Activity button that launches the app in the background reaches it.
+        let player = RadioPlayerModel(modelContext: container.mainContext, schedule: schedule)
+        _player = StateObject(wrappedValue: player)
         UNUserNotificationCenter.current().delegate = ForegroundNotificationPresenter.shared
     }
 

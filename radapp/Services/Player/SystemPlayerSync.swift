@@ -1,7 +1,8 @@
 import UIKit
+import WidgetKit
 
-/// Keeps the Lock Screen Live Activity and the system Now Playing player in
-/// step with the app, cover art included.
+/// Keeps the Lock Screen Live Activity, the system Now Playing player and the
+/// Home Screen widget in step with the app, cover art included.
 @MainActor
 final class SystemPlayerSync {
     struct Snapshot {
@@ -12,6 +13,13 @@ final class SystemPlayerSync {
         var isLiked = false
         var startedAt: Date?
         var duration: TimeInterval?
+        /// From the schedule, for the Home Screen widget.
+        var showHosts: String?
+        var showStart: Date?
+        var showEnd: Date?
+        var upNext: [RadioWidgetSnapshot.UpcomingShow] = []
+        /// The app's Appearance setting; `nil` follows iOS.
+        var isDark: Bool?
     }
 
     private let liveActivity = LiveActivityController()
@@ -55,6 +63,7 @@ final class SystemPlayerSync {
 
     private func push() {
         let snapshot = latest
+        pushHomeWidget(snapshot)
         switch snapshot.state {
         case .idle, .failed:
             liveActivity.sync(nil, canStart: false)
@@ -81,6 +90,26 @@ final class SystemPlayerSync {
                 isPlaying: isPlaying,
                 artwork: artworkImage ?? UIImage(named: "StationLogo")
             )
+        }
+    }
+
+    private func pushHomeWidget(_ snapshot: Snapshot) {
+        let widget = RadioWidgetSnapshot(
+            isOnAir: snapshot.show != nil,
+            isPlaying: snapshot.state == .playing,
+            isLiked: snapshot.isLiked,
+            title: snapshot.title,
+            subtitle: snapshot.artist ?? snapshot.showHosts,
+            showName: snapshot.show,
+            showStart: snapshot.showStart,
+            showEnd: snapshot.showEnd,
+            artworkFileName: artworkFileName,
+            upNext: snapshot.upNext,
+            isDark: snapshot.isDark
+        )
+        // Reloads are budgeted, so only ask when something actually changed.
+        if widget.save() {
+            WidgetCenter.shared.reloadTimelines(ofKind: RadioWidgetSnapshot.widgetKind)
         }
     }
 }
