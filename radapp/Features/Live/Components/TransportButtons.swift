@@ -35,7 +35,9 @@ struct FavoriteToggleButton: View {
         Button(action: action) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12).fill(.primary)
+                // Fixed like the other transport icons, so it never outgrows its 56pt box.
                 Image(systemName: isFavorite ? "heart.fill" : "heart")
+                    .font(.system(size: 17))
                     .foregroundStyle(isFavorite ? filledColor : Color(.systemBackground))
             }
             .frame(width: 56, height: 56)

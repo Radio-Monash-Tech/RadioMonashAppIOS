@@ -21,15 +21,15 @@ struct PlatformSheet: View {
     var body: some View {
         VStack(spacing: 8) {
             Text("Listen on")
-                .font(.system(size: 20, weight: .bold))
+                .font(.title3.bold())
                 .foregroundStyle(.primary)
 
             Text(track.title)
-                .font(.system(size: 16, weight: .medium))
+                .font(.callout.weight(.medium))
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
             Text(track.artist)
-                .font(.system(size: 14))
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 16)
 
@@ -119,11 +119,11 @@ private struct PlatformRow<Icon: View>: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 17, weight: .medium))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(.primary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.system(size: 13))
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }

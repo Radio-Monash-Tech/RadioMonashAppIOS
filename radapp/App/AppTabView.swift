@@ -24,6 +24,7 @@ struct AppTabView: View {
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @AppStorage(TextSizePreference.storageKey) private var textSizeOffset = 0
     @State private var selection: AppTab = .live
+    @Environment(\.isLandscapePhone) private var isLandscape
     
     // increase or adjust system-wide
     var body: some View {
@@ -40,8 +41,16 @@ struct AppTabView: View {
             Tab("Library", systemImage: "books.vertical", value: .library) {
                 LibraryView().modifier(miniPlayerInset)
             }
-            Tab(value: .search, role: .search) {
-                SearchView().modifier(miniPlayerInset)
+            // In landscape, iOS pins the other tabs left and a search-role tab
+            // right; as an ordinary tab, Search joins one centred bar instead.
+            if isLandscape {
+                Tab("Search", systemImage: "magnifyingglass", value: .search) {
+                    SearchView().modifier(miniPlayerInset)
+                }
+            } else {
+                Tab(value: .search, role: .search) {
+                    SearchView().modifier(miniPlayerInset)
+                }
             }
         }
         .modifier(MiniPlayerAccessory(isEnabled: selection != .live) { selection = .live })

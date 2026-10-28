@@ -67,7 +67,7 @@ struct LiveRadioView: View {
     private var playedEarlierRows: some View {
         if model.history.isEmpty {
             Text("Track history appears here once the station reports it.")
-                .font(.system(size: 13))
+                .font(.footnote)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 24)
                 .plainListRow()

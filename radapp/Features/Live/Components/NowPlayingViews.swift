@@ -57,11 +57,11 @@ struct MetadataDisplay: View {
                 errorState(message)
             } else {
                 VStack(spacing: 12) {
-                    MarqueeText(title, font: .system(size: 24, weight: .bold), alignment: .center)
+                    MarqueeText(title, font: .title2.bold(), alignment: .center)
                         .foregroundStyle(.primary)
                         .animation(.default, value: title)
                     if let artist {
-                        MarqueeText(artist, font: .system(size: 17), alignment: .center)
+                        MarqueeText(artist, font: .body, alignment: .center)
                             .foregroundStyle(.secondary)
                             .animation(.default, value: artist)
                     }

@@ -7,7 +7,7 @@ struct RecentlyPlayedHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text("Recently played")
-                .font(.system(size: 18, weight: .bold))
+                .font(.headline.bold())
                 .foregroundStyle(.primary)
             Spacer()
             if showsSeeAll {
@@ -33,9 +33,9 @@ struct RecentlyPlayedRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 2) {
-                MarqueeText(track.title, font: .system(size: 14, weight: .medium))
+                MarqueeText(track.title, font: .subheadline.weight(.medium))
                     .foregroundStyle(.primary)
-                MarqueeText(track.artist, font: .system(size: 12.5))
+                MarqueeText(track.artist, font: .footnote)
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -46,7 +46,7 @@ struct RecentlyPlayedRow: View {
                     .accessibilityLabel("Liked")
             }
             Text(track.playedAt, style: .time)
-                .font(.system(size: 11.5, design: .monospaced))
+                .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 24)

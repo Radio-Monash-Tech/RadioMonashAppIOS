@@ -43,20 +43,18 @@ struct SettingsView: View {
             }
 
             Section("Customization") {
-                Picker(selection: $accent) {
-                    ForEach(AccentChoice.allCases) { choice in
-                        Label {
-                            Text(choice.label)
-                        } icon: {
-                            Swatch(color: choice.uiColor)
+                MenuRow("Colour", subtitle: "Accent used across the app") {
+                    Picker("Colour", selection: $accent) {
+                        ForEach(AccentChoice.allCases) { choice in
+                            Label {
+                                Text(choice.label)
+                            } icon: {
+                                Swatch(color: choice.uiColor)
+                            }
+                            .tag(choice)
                         }
-                        .tag(choice)
                     }
-                } label: {
-                    Text("Colour")
-                    Text("Accent used across the app")
                 }
-                .pickerStyle(.menu)
                 .onChange(of: accent) { player.refreshLiveActivity() }
             }
 
@@ -70,25 +68,26 @@ struct SettingsView: View {
                     Text("Increase Contrast")
                     Text("Darker text, stronger colours and solid backgrounds")
                 }
-                Picker(selection: $colourVision) {
-                    ForEach(ColourVisionGroup.allCases) { group in
-                        Section(group.title) {
-                            ForEach(group.types) { type in
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(type.label)
-                                    Text(type.summary)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                MenuRow("Colour Vision", subtitle: "Colour filter over the whole app") {
+                    Picker(selection: $colourVision) {
+                        ForEach(ColourVisionGroup.allCases) { group in
+                            Section(group.title) {
+                                ForEach(group.types) { type in
+                                    // Menus show the second line as a subtitle.
+                                    VStack {
+                                        Text(type.label)
+                                        Text(type.summary)
+                                    }
+                                    .tag(type)
                                 }
-                                .tag(type)
                             }
                         }
+                    } label: {
+                        Text("Colour Vision")
+                    } currentValueLabel: {
+                        Text(colourVision.label)
                     }
-                } label: {
-                    Text("Colour Vision")
-                    Text("Colour filter over the whole app")
                 }
-                .pickerStyle(.navigationLink)
             } header: {
                 Text("Accessibility")
             } footer: {
@@ -139,6 +138,41 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// A setting with a dropdown, laid out like the toggle and stepper rows. A
+/// plain menu picker moves its value below the label at larger text sizes.
+private struct MenuRow<Menu: View>: View {
+    let title: String
+    let subtitle: String
+    @ViewBuilder let menu: Menu
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    init(_ title: String, subtitle: String, @ViewBuilder menu: () -> Menu) {
+        self.title = title
+        self.subtitle = subtitle
+        self.menu = menu()
+    }
+
+    var body: some View {
+        // At accessibility sizes the value would squeeze the title, so it goes underneath.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout())
+        layout {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
+            menu
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .fixedSize()
+        }
     }
 }
 

@@ -32,7 +32,7 @@ struct ConnectionQualityBadge: View {
                 .animation(isLive ? .easeInOut(duration: 0.75).repeatForever(autoreverses: true) : .default, value: pulse)
                 .onAppear { pulse = true }
             Text(text)
-                .font(.system(size: 11, weight: .bold))
+                .font(.caption2.bold())
                 .kerning(0.5)
                 .foregroundStyle(color)
         }
@@ -41,5 +41,7 @@ struct ConnectionQualityBadge: View {
         .background(color.opacity(0.2), in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(color, lineWidth: 1))
         .animation(.easeInOut(duration: 0.3), value: connectivity)
+        // It sits in the navigation bar beside the title, so it only grows so far.
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 }

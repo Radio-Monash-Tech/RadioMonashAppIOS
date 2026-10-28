@@ -128,6 +128,8 @@ private struct DayStrip: View {
                                 .font(.headline)
                         }
                         .frame(width: 48, height: 52)
+                        // Fixed-size chips: the text stops growing once it would no longer fit.
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                         .foregroundStyle(isSelected ? Color.white : Color.primary)
                         .background(
                             isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.fill.tertiary),
@@ -151,17 +153,31 @@ private struct ScheduleRow: View {
     let show: ScheduledShow
     let isOnAir: Bool
     var isFollowed = false
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// Wide enough for "00:00" at the current text size, so every row's titles line up.
+    @ScaledMetric(relativeTo: .subheadline) private var timeWidth: CGFloat = 48
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(ScheduledShow.clock(show.start))
+        // At the largest sizes there's no room beside the title, so the times go above it.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(spacing: 12))
+        layout {
+            if typeSize.isAccessibilitySize {
+                Text(show.timeRange)
                     .font(.subheadline.weight(.semibold).monospacedDigit())
-                Text(ScheduledShow.clock(show.end))
-                    .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(ScheduledShow.clock(show.start))
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
+                    Text(ScheduledShow.clock(show.end))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                .lineLimit(1)
+                .frame(width: timeWidth, alignment: .leading)
             }
-            .frame(width: 48, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {

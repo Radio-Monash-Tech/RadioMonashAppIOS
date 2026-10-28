@@ -19,7 +19,9 @@ struct VolumeControlBar: View {
             Button {
                 isMuted.toggle()
             } label: {
+                // Fixed so it never outgrows its 48pt circle.
                 Image(systemName: isSilent ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.system(size: 17))
                     .foregroundStyle(.primary)
                     .frame(width: 48, height: 48)
                     .background(.fill.tertiary, in: Circle())
