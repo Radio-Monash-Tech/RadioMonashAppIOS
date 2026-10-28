@@ -21,12 +21,15 @@ struct SquarespaceClient {
 
     private let journalismPath = "journalism-all"
 
-    func articles(after offset: Int64? = nil) async throws -> ArticlePage {
+    /// One page of articles, newest first. `tag` limits it to articles with
+    /// that tag; Squarespace does the filtering, so paging still works.
+    func articles(tag: String? = nil, after offset: Int64? = nil) async throws -> ArticlePage {
         var components = URLComponents(
             url: Self.siteURL.appendingPathComponent(journalismPath),
             resolvingAgainstBaseURL: false
         )!
         var query = [URLQueryItem(name: "format", value: "json")]
+        if let tag { query.append(URLQueryItem(name: "tag", value: tag)) }
         if let offset { query.append(URLQueryItem(name: "offset", value: String(offset))) }
         components.queryItems = query
 

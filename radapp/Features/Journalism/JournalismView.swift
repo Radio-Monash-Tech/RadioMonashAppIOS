@@ -40,6 +40,12 @@ struct JournalismView: View {
 
     private var articleList: some View {
         List {
+            TopicFilter(selection: journalism.topic) { topic in
+                Task { await journalism.select(topic) }
+            }
+            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
             content
         }
         .listStyle(.plain)
@@ -225,4 +231,48 @@ extension Article {
     JournalismView()
         .environmentObject(JournalismStore())
         .modelContainer(for: SavedArticle.self, inMemory: true)
+}
+
+/// The row of filter pills at the top of Journalism.
+private struct TopicFilter: View {
+    let selection: ArticleTopic?
+    let onSelect: (ArticleTopic?) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                pill("All", topic: nil)
+                ForEach(ArticleTopic.allCases) { pill($0.label, topic: $0) }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func pill(_ title: String, topic: ArticleTopic?) -> some View {
+        TopicPill(title: title, isSelected: selection == topic) { onSelect(topic) }
+    }
+}
+
+private struct TopicPill: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    @Environment(\.accentChoice) private var accent
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .foregroundStyle(isSelected ? accent.onColor : Color.primary)
+                .background(
+                    isSelected ? AnyShapeStyle(accent.color) : AnyShapeStyle(.fill.tertiary),
+                    in: Capsule()
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
 }
