@@ -45,7 +45,6 @@ struct RecentlyPlayedSheet: View {
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 1) {
                         Text("Recently Played").font(.headline)
-                        Text("Radio Monash · today").font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
