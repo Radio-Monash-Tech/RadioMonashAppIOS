@@ -23,6 +23,6 @@ extension RadioPlayerModel {
     func refreshLikeState() {
         let isLiked = favourites?.contains(title: nowPlaying.title, artist: nowPlaying.artist) ?? false
         setIfChanged(\.isCurrentTrackLiked, isLiked)
-        refreshLiveActivity()
+        refreshSystemPlayers()
     }
 }

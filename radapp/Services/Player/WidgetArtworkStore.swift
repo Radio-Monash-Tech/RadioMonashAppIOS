@@ -1,37 +1,32 @@
 import CryptoKit
 import UIKit
 
-/// Saves track covers where the Live Activity and Home Screen widget can read
-/// them. Live Activities won't draw large images, so each cover is saved
-/// small for the activity and larger for the widget.
+/// Saves track covers where the Home Screen widget can read them.
 @MainActor
 final class WidgetArtworkStore {
-    /// Big enough for the 64pt Lock Screen artwork at 3x.
-    private let pixelSize: CGFloat = 192
     /// Big enough for the full-bleed small widget at 3x.
-    private let largePixelSize: CGFloat = 512
+    private let pixelSize: CGFloat = 512
 
-    /// Returns the saved file's name, or `nil` if the cover couldn't be saved.
+    /// Returns the cover's name for the widget snapshot, or `nil` if it
+    /// couldn't be saved. The widget reads it through `largeFileName(for:)`.
     func save(_ url: URL) async -> String? {
         guard let directory = WidgetArtwork.directory else { return nil }
         let name = Self.fileName(for: url)
-        let fileURL = directory.appendingPathComponent(name)
+        let largeName = WidgetArtwork.largeFileName(for: name)
+        let fileURL = directory.appendingPathComponent(largeName)
         if FileManager.default.fileExists(atPath: fileURL.path) { return name }
 
-        let largeName = WidgetArtwork.largeFileName(for: name)
         guard let image = await ArtworkCache.shared.load(url),
-              let data = resized(image, to: pixelSize).jpegData(compressionQuality: 0.8),
-              let largeData = resized(image, to: largePixelSize).jpegData(compressionQuality: 0.8)
+              let data = resized(image, to: pixelSize).jpegData(compressionQuality: 0.8)
         else { return nil }
 
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try largeData.write(to: directory.appendingPathComponent(largeName), options: .atomic)
             try data.write(to: fileURL, options: .atomic)
         } catch {
             return nil
         }
-        removeFiles(in: directory, except: [name, largeName])
+        removeFiles(in: directory, except: [largeName])
         return name
     }
 

@@ -5,6 +5,5 @@ import WidgetKit
 struct RadappWidgetsBundle: WidgetBundle {
     var body: some Widget {
         RadioHomeWidget()
-        RadioLiveActivity()
     }
 }

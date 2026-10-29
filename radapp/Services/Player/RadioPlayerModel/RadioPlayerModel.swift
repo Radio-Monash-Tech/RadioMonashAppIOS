@@ -10,14 +10,20 @@ final class RadioPlayerModel: ObservableObject {
     @Published private(set) var state: StreamState = .idle {
         didSet {
             trackListening()
+            captions.playbackChanged(isPlaying: state == .playing)
             // Catch up straight away when listening (re)starts.
             if state == .playing, oldValue != .playing { restartPolling() }
         }
     }
     // Set by the extensions in this folder, which Swift can't allow with
     // `private(set)` across files. Only the player should change these.
-    @Published var nowPlaying: NowPlaying = .offAir
-    @Published var liveShow: LiveShow? { didSet { trackListening() } }
+    @Published var nowPlaying: NowPlaying = .offAir { didSet { updateCaptions() } }
+    @Published var liveShow: LiveShow? {
+        didSet {
+            trackListening()
+            updateCaptions()
+        }
+    }
     @Published var history: [PlayedTrack] = []
     @Published var connectivity: Connectivity = .good
     @Published var isCurrentTrackLiked = false
@@ -39,6 +45,7 @@ final class RadioPlayerModel: ObservableObject {
     let stream = RadioStream()
     let audioSession = RadioAudioSession()
     let systemPlayers = SystemPlayerSync()
+    let captions: CaptionCoordinator
     let favourites: FavouriteStore?
     let schedule: ScheduleStore?
     let listening: ListeningTracker?
@@ -54,19 +61,21 @@ final class RadioPlayerModel: ObservableObject {
         favourites = modelContext.map(FavouriteStore.init)
         self.schedule = schedule
         listening = modelContext.map(ListeningTracker.init)
+        captions = CaptionCoordinator(modelContext: modelContext)
         stream.volume = volume
+        stream.onItemReady = { [weak self] in self?.captions.playerItemReady($0) }
         stream.onStateChange = { [weak self] state in
             self?.state = state
-            self?.refreshLiveActivity()
+            self?.refreshSystemPlayers()
         }
         audioSession.onEvent = { [weak self] in self?.handle($0) }
-        // Wired up front: a widget or Live Activity button can launch the app
+        // Wired up front: a widget button can launch the app
         // in the background, before any view has appeared to prepare the session.
-        LiveActivityActions.togglePlayback = { [weak self] in
+        WidgetActions.togglePlayback = { [weak self] in
             self?.prepareSession()
             self?.togglePlayback()
         }
-        LiveActivityActions.toggleLike = { [weak self] in self?.toggleLike() }
+        WidgetActions.toggleLike = { [weak self] in self?.toggleLike() }
     }
 
     /// While a show is on air its name stands in for the track; otherwise
@@ -87,4 +96,21 @@ final class RadioPlayerModel: ObservableObject {
     var canLikeCurrentTrack: Bool { favourites != nil && isIdentifiedTrack }
     var isBusy: Bool { state == .connecting }
     var isActive: Bool { state == .playing || state == .connecting }
+
+    /// Tells Live Captions what RadioCult says is on, plus names it should
+    /// expect to hear: the show, today's shows and hosts, and recent artists.
+    func updateCaptions() {
+        var names = ["Radio Monash"]
+        if let liveShow { names.append(liveShow.name) }
+        if let schedule {
+            for show in schedule.shows(on: .now) {
+                names.append(show.series.title)
+                names += show.series.hosts
+            }
+        }
+        names += history.prefix(20).map(\.artist)
+        var seen = Set<String>()
+        let vocabulary = names.filter { !$0.isEmpty && seen.insert($0).inserted }
+        captions.stationChanged(liveShow: liveShow, nowPlaying: nowPlaying, vocabulary: vocabulary)
+    }
 }

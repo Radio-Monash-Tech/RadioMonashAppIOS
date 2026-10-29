@@ -64,7 +64,9 @@ struct JournalismView: View {
         return Button {
             path.append(article)
         } label: {
-            FeatureCard(article: article, isSaved: savedCopy != nil)
+            FeatureCard(article: article, isSaved: savedCopy != nil) {
+                modelContext.toggleSaved(article, existing: savedCopy)
+            }
         }
         .buttonStyle(.plain)
         .contextMenu {
@@ -120,10 +122,11 @@ struct JournalismView: View {
                 Button {
                     path.append(article)
                 } label: {
+                    let toggleSave = { modelContext.toggleSaved(article, existing: savedCopy) }
                     if index == 0 {
-                        FeatureCard(article: article, isSaved: savedCopy != nil)
+                        FeatureCard(article: article, isSaved: savedCopy != nil, onToggleSave: toggleSave)
                     } else {
-                        ArticleRow(article: article, isSaved: savedCopy != nil)
+                        ArticleRow(article: article, isSaved: savedCopy != nil, onToggleSave: toggleSave)
                     }
                 }
                 .buttonStyle(.plain)
@@ -171,15 +174,14 @@ private extension View {
 private struct FeatureCard: View {
     let article: Article
     var isSaved = false
+    var onToggleSave: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ArtworkImage(url: article.imageURL?.squarespaceSized(1000))
                 .aspectRatio(4 / 3, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            Text("LATEST")
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(.tint)
+            ArticleSource(article: article, isLatest: true)
             Text(article.title)
                 .font(.title3.bold())
             if !article.excerpt.isEmpty {
@@ -188,7 +190,7 @@ private struct FeatureCard: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
             }
-            ArticleByline(article: article, isSaved: isSaved)
+            ArticleFooter(article: article, isSaved: isSaved, onToggleSave: onToggleSave)
         }
         .padding(12)
         .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -196,24 +198,93 @@ private struct FeatureCard: View {
     }
 }
 
+/// An Apple News–style card: topic and title on the left, a square photo on the right.
 private struct ArticleRow: View {
     let article: Article
     var isSaved = false
+    var onToggleSave: () -> Void = {}
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .headline) private var imageSize: CGFloat = 108
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(article.title)
-                    .font(.headline)
-                    .lineLimit(3)
-                ArticleByline(article: article, isSaved: isSaved)
+        VStack(alignment: .leading, spacing: 6) {
+            // At the largest sizes the title needs the full width, so the photo goes on top.
+            if typeSize.isAccessibilitySize {
+                ArtworkImage(url: article.imageURL?.squarespaceSized(1000))
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                headline
+            } else {
+                HStack(alignment: .top, spacing: 14) {
+                    headline
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ArtworkImage(url: article.imageURL?.squarespaceSized(300))
+                        .frame(width: min(imageSize, 140), height: min(imageSize, 140))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
             }
-            Spacer(minLength: 0)
-            ArtworkImage(url: article.imageURL?.squarespaceSized(300))
-                .frame(width: 72, height: 72)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            ArticleFooter(article: article, isSaved: isSaved, onToggleSave: onToggleSave)
         }
+        .padding(14)
+        .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .contentShape(Rectangle())
+    }
+
+    private var headline: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ArticleSource(article: article)
+            Text(article.title)
+                .font(.title3.weight(.semibold))
+                .lineLimit(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+/// The label above a title, where Apple News shows the publisher.
+private struct ArticleSource: View {
+    let article: Article
+    var isLatest = false
+
+    var body: some View {
+        let topic = article.topic?.label ?? "Radio Monash"
+        Text(isLatest ? "Latest · \(topic)" : topic)
+            .font(.footnote.weight(.bold))
+            .textCase(.uppercase)
+            .foregroundStyle(.tint)
+            .lineLimit(1)
+    }
+}
+
+/// Byline on the left, the ••• menu on the right.
+private struct ArticleFooter: View {
+    let article: Article
+    let isSaved: Bool
+    let onToggleSave: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center) {
+            ArticleByline(article: article, isSaved: isSaved)
+            Spacer(minLength: 8)
+            Menu {
+                Button(action: onToggleSave) {
+                    Label(isSaved ? "Remove from Saved" : "Save Article",
+                          systemImage: isSaved ? "bookmark.slash" : "bookmark")
+                }
+                Button {
+                    SystemPresenter.share(article.webURL ?? SquarespaceClient.siteURL)
+                } label: {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("More")
+        }
     }
 }
 

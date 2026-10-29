@@ -11,8 +11,13 @@ final class RadioStream {
         didSet { onStateChange?(state) }
     }
     var onStateChange: ((StreamState) -> Void)?
-    var isMuted = false { didSet { player?.isMuted = isMuted } }
-    var volume: Float = 1 { didSet { player?.volume = volume } }
+    /// A new connection is about to start playing. Live Captions install
+    /// their audio tap here, which only works before playback starts.
+    var onItemReady: ((AVPlayerItem) -> Void)?
+    // Mute is volume 0 rather than `isMuted`: a muted player hands Live
+    // Captions' audio tap silence, while at volume 0 it still gets the audio.
+    var isMuted = false { didSet { applyVolume() } }
+    var volume: Float = 1 { didSet { applyVolume() } }
 
     /// RadioCult stream for the station.
     private let url = URL(string: "https://radio-monash.radiocult.fm/stream")!
@@ -56,8 +61,7 @@ final class RadioStream {
 
         let item = AVPlayerItem(url: url)
         let player = AVPlayer(playerItem: item)
-        player.isMuted = isMuted
-        player.volume = volume
+        player.volume = isMuted ? 0 : volume
         player.automaticallyWaitsToMinimizeStalling = true
         self.player = player
 
@@ -68,6 +72,7 @@ final class RadioStream {
                 switch status {
                 case .readyToPlay:
                     guard self.state == .connecting else { return }
+                    self.onItemReady?(item)
                     self.player?.play()
                     self.endReconnectBackgroundTask()
                     self.state = .playing
@@ -100,6 +105,10 @@ final class RadioStream {
                 }
                 .store(in: &subscriptions)
         }
+    }
+
+    private func applyVolume() {
+        player?.volume = isMuted ? 0 : volume
     }
 
     private func tearDown() {

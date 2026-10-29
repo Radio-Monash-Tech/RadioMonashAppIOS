@@ -22,6 +22,7 @@ struct SquarespaceItem: Decodable {
     let body: String?
     let assetUrl: String?
     let author: SquarespaceAuthor?
+    let tags: [String]?
 }
 
 struct SquarespaceAuthor: Decodable {
@@ -48,7 +49,8 @@ extension SquarespaceItem {
             imageURL: assetUrl.flatMap(URL.init(string:)),
             webURL: fullUrl.flatMap { URL(string: $0, relativeTo: SquarespaceClient.siteURL)?.absoluteURL },
             bodyHTML: bodyHTML,
-            readMinutes: max(1, Int((Double(wordCount) / 200).rounded(.up)))
+            readMinutes: max(1, Int((Double(wordCount) / 200).rounded(.up))),
+            topic: ArticleTopic(tags: tags ?? [])
         )
     }
 }

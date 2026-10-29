@@ -4,7 +4,6 @@ import UIKit
 struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @AppStorage(RadioPlayerModel.resumeOnLaunchKey) private var resumeOnLaunch = false
-    @AppStorage(LiveActivityController.enabledKey) private var liveActivityEnabled = false
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @AppStorage("newArticleAlerts") private var newArticleAlerts = false
     @AppStorage(AccentChoice.storageKey, store: AccentChoice.store) private var accent: AccentChoice = .blue
@@ -16,6 +15,16 @@ struct SettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var cacheBytes = URLCache.shared.currentDiskUsage
+
+    private var captionStatus: String {
+        switch player.captions.availability {
+        case .checking: "Checking…"
+        case .unsupported: "Not Available"
+        case .needsDownload: "Not Set Up"
+        case .downloading: "Downloading…"
+        case .ready: player.captions.isEnabled ? "On" : "Off"
+        }
+    }
 
     private var version: String {
         let info = Bundle.main.infoDictionary
@@ -33,7 +42,7 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 // The Home Screen widget follows this setting too.
-                .onChange(of: appearance) { player.refreshLiveActivity() }
+                .onChange(of: appearance) { player.refreshSystemPlayers() }
             } header: {
                 Text("Appearance")
             } footer: {
@@ -55,7 +64,7 @@ struct SettingsView: View {
                         }
                     }
                 }
-                .onChange(of: accent) { player.refreshLiveActivity() }
+                .onChange(of: accent) { player.refreshSystemPlayers() }
             }
 
             Section {
@@ -102,11 +111,18 @@ struct SettingsView: View {
                     Text("Resume on Launch")
                     Text("Start the stream when the app opens")
                 }
-                Toggle(isOn: $liveActivityEnabled) {
-                    Text("Live Activity")
-                    Text("Extra Lock Screen card with a Like button")
+            }
+
+            Section {
+                LabeledContent("Live Captions", value: captionStatus)
+            } header: {
+                Text("Live Captions")
+            } footer: {
+                if case .unsupported(let reason) = player.captions.availability {
+                    Text(reason + " The rest of the app works as normal.")
+                } else {
+                    Text("Turn captions on or off with the CC button on the Live tab. Captions are made on this iPhone; no audio leaves it.")
                 }
-                .onChange(of: liveActivityEnabled) { player.refreshLiveActivity() }
             }
 
             Section("Notifications") {

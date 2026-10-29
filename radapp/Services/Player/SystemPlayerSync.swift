@@ -1,8 +1,8 @@
 import UIKit
 import WidgetKit
 
-/// Keeps the Lock Screen Live Activity, the system Now Playing player and the
-/// Home Screen widget in step with the app, cover art included.
+/// Keeps the system Now Playing player (Lock Screen and Control Centre) and
+/// the Home Screen widget in step with the app, cover art included.
 @MainActor
 final class SystemPlayerSync {
     struct Snapshot {
@@ -22,7 +22,6 @@ final class SystemPlayerSync {
         var isDark: Bool?
     }
 
-    private let liveActivity = LiveActivityController()
     private let nowPlaying = NowPlayingController()
     private let widgetArtwork = WidgetArtworkStore()
     private var artworkFileName: String?
@@ -66,23 +65,9 @@ final class SystemPlayerSync {
         pushHomeWidget(snapshot)
         switch snapshot.state {
         case .idle, .failed:
-            liveActivity.sync(nil, canStart: false)
             nowPlaying.clear()
         case .connecting, .playing, .paused:
             let isPlaying = snapshot.state == .playing
-            let trackEnd = snapshot.duration.flatMap { duration in snapshot.startedAt.map { $0 + duration } }
-            liveActivity.sync(
-                RadioActivityAttributes.ContentState(
-                    title: snapshot.title,
-                    artist: snapshot.artist ?? "",
-                    isPlaying: isPlaying,
-                    isLiked: snapshot.isLiked,
-                    progressStart: snapshot.startedAt,
-                    progressEnd: trackEnd,
-                    artworkFileName: artworkFileName
-                ),
-                canStart: isPlaying
-            )
             nowPlaying.update(
                 title: snapshot.title,
                 artist: snapshot.artist,

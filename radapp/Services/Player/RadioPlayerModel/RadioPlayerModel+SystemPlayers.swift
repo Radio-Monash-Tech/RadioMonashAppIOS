@@ -1,11 +1,11 @@
 import SwiftUI
 
-// Keeping the Live Activity, Lock Screen player and Home Screen widget up to date.
+// Keeping the Lock Screen player and Home Screen widget up to date.
 extension RadioPlayerModel {
-    /// Pushes the current state to the Lock Screen Live Activity, the system
-    /// player and the Home Screen widget. Also called by Settings when the Live
-    /// Activity toggle changes, and when the schedule or followed shows change.
-    func refreshLiveActivity() {
+    /// Pushes the current state to the system player and the Home Screen
+    /// widget. Also called when the appearance, accent colour, schedule or
+    /// followed shows change, since the widget shows those.
+    func refreshSystemPlayers() {
         let onAir = scheduledLiveShow
         systemPlayers.update(.init(
             state: state,

@@ -1,17 +1,16 @@
 import SwiftUI
 import SwiftData
 
-enum LiveRoute: Hashable { case history }
+enum LiveRoute: Hashable { case history, transcript }
 
 struct LiveRadioView: View {
 
     @EnvironmentObject private var model: RadioPlayerModel
-    @EnvironmentObject private var schedule: ScheduleStore
-    @Query private var favourites: [FavouriteTrack]
     @State private var showingPlatformSheet = false
-    @State private var sharingTrack: ShareableTrack?
+    @State private var showingRecent = false
     @State private var path = NavigationPath()
     @State private var likeBurstTrigger = 0
+    @State private var showingCaptionSetup = false
     @Environment(\.isLandscapePhone) private var isLandscape
 
     var body: some View {
@@ -19,29 +18,7 @@ struct LiveRadioView: View {
             ZStack {
                 ArtworkBackgroundLayer(url: model.showsStationLogo ? nil : model.nowPlaying.artworkURL)
 
-                GeometryReader { viewport in
-                    List {
-                        playerSection
-                            // In landscape, cap the height too so the artwork shrinks to fit above the tab bar.
-                            .frame(minHeight: viewport.size.height,
-                                   maxHeight: isLandscape ? viewport.size.height : nil)
-                            .plainListRow()
-
-                        RecentlyPlayedHeader(showsSeeAll: !model.history.isEmpty) {
-                            path.append(LiveRoute.history)
-                        }
-                        .plainListRow()
-
-                        playedEarlierRows
-
-                        Color.clear
-                            .frame(height: 40)
-                            .plainListRow()
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .scrollIndicators(.hidden)
-                }
+                playerSection
 
                 HeartBurstOverlay(trigger: likeBurstTrigger)
             }
@@ -53,52 +30,29 @@ struct LiveRadioView: View {
                         .fixedSize()
                 }
                 .hidingSharedBackground()
+                if showsCaptions {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        captionOptions
+                    }
+                }
+            }
+            .sheet(isPresented: $showingCaptionSetup) {
+                CaptionSetupSheet(captions: captions)
+                    .presentationDetents([.large])
+                    .colourVisionFilter()
             }
             .sheet(isPresented: $showingPlatformSheet) {
                 PlatformSheet(track: model.nowPlaying)
                     .colourVisionFilter()
             }
-            .trackShareSheet(for: $sharingTrack)
-            .navigationDestination(for: LiveRoute.self) { destination(for: $0) }
-        }
-    }
-
-    @ViewBuilder
-    private var playedEarlierRows: some View {
-        if model.history.isEmpty {
-            Text("Track history appears here once the station reports it.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 24)
-                .plainListRow()
-        } else {
-            let likedKeys = Set(favourites.map(\.key))
-            ForEach(model.history) { track in
-                let isLiked = likedKeys.contains(track.favouriteKey)
-                RecentlyPlayedRow(track: track, isLiked: isLiked)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(track.id == model.history.last?.id ? .hidden : .visible, edges: .bottom)
-                    .listRowSeparator(.hidden, edges: .top)
-                    .alignmentGuide(.listRowSeparatorLeading) { _ in 24 + 48 + 12 }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button {
-                            model.toggleLike(track, showName: schedule.onAir(at: track.playedAt)?.series.title)
-                        } label: {
-                            Label(isLiked ? "Unlike" : "Like",
-                                  systemImage: isLiked ? "heart.slash.fill" : "heart.fill")
-                        }
-                        .tint(isLiked ? .gray : PlayerPalette.error)
-                        
-                        // share button
-                        Button {
-                            sharingTrack = track.shareable
-                        } label: {
-                            Label("Share", systemImage: "square.and.arrow.up")
-                        }
-                        .tint(.orange)
-                    }
+            .sheet(isPresented: $showingRecent) {
+                RecentlyPlayedSheet {
+                    showingRecent = false
+                    path.append(LiveRoute.history)
+                }
+                .colourVisionFilter()
             }
+            .navigationDestination(for: LiveRoute.self) { destination(for: $0) }
         }
     }
 
@@ -111,29 +65,36 @@ struct LiveRadioView: View {
             }
         }
         .animation(.snappy, value: isLandscape)
+        .animation(.snappy, value: showsCaptions)
     }
 
+    // While captions are on they take the place of the artwork, titles and volume.
     private var portraitPlayer: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 0)
-
-            artwork
-            Spacer().frame(height: 32)
-            metadata
-
-            Spacer(minLength: 0)
-
+            if showsCaptions {
+                captionsView
+            } else {
+                Spacer(minLength: 0)
+                artwork
+                Spacer().frame(height: 32)
+                metadata
+                Spacer(minLength: 0)
+            }
             controls
         }
     }
 
-    // Artwork on the left, titles and controls on the right.
+    // Artwork (or captions) on the left, titles and controls on the right.
     private var landscapePlayer: some View {
         HStack(spacing: 0) {
-            artwork
+            if showsCaptions {
+                captionsView
+            } else {
+                artwork
+            }
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
-                metadata
+                if !showsCaptions { metadata }
                 Spacer(minLength: 0)
                 controls
             }
@@ -150,13 +111,77 @@ struct LiveRadioView: View {
         )
     }
 
+    // MARK: Captions
+
+    private var captions: CaptionCoordinator { model.captions }
+
+    private var showsCaptions: Bool { captions.isSupported && captions.isEnabled }
+
+    private var captionsView: some View {
+        LiveCaptionsView(
+            captions: captions,
+            title: model.displayTitle,
+            artist: model.displayArtist,
+            artworkURL: model.nowPlaying.artworkURL,
+            showsStationLogo: model.showsStationLogo
+        )
+        .transition(.opacity)
+    }
+
+    private func toggleCaptions() {
+        switch captions.availability {
+        case .unsupported(let reason):
+            SystemPresenter.alert(title: "Live Captions Aren't Available", message: reason)
+        case .checking:
+            SystemPresenter.alert(title: "Live Captions Are Getting Ready", message: "Try again in a moment.")
+        default:
+            if captions.isEnabled {
+                captions.isEnabled = false
+            } else if captions.needsSetup {
+                showingCaptionSetup = true
+            } else {
+                captions.isEnabled = true
+            }
+        }
+    }
+
+    /// The Aa menu: caption size, lyrics on or off, and the transcript.
+    private var captionOptions: some View {
+        Menu {
+            Picker("Caption Size", selection: Binding(
+                get: { captions.textSize },
+                set: { captions.textSize = $0 }
+            )) {
+                ForEach(CaptionTextSize.allCases) { Text($0.label).tag($0) }
+            }
+            Toggle(isOn: Binding(
+                get: { captions.captionsMusic },
+                set: { captions.captionsMusic = $0 }
+            )) {
+                Label("Caption Music", systemImage: "music.note")
+            }
+            Button {
+                path.append(LiveRoute.transcript)
+            } label: {
+                Label("Open Transcript", systemImage: "text.page")
+            }
+        } label: {
+            Text("Aa")
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: 44, height: 44)
+        }
+        .accessibilityLabel("Caption Options")
+    }
+
     private var metadata: some View {
         MetadataDisplay(state: model.state, title: model.displayTitle, artist: model.displayArtist, onRetry: model.retry)
     }
 
     private var controls: some View {
         VStack(spacing: 20) {
-            VolumeControlBar(isMuted: model.isMuted) { model.isMuted = $0 }
+            if !showsCaptions {
+                VolumeControlBar(isMuted: model.isMuted) { model.isMuted = $0 }
+            }
             HStack(spacing: 16) {
                 SleepTimerButton(
                     endsAt: model.sleepTimerEndsAt,
@@ -171,6 +196,13 @@ struct LiveRadioView: View {
                 .disabled(!model.canLikeCurrentTrack)
                 .opacity(model.canLikeCurrentTrack ? 1 : 0.4)
             }
+            PlayerUtilityRow(
+                captionsOn: showsCaptions,
+                captionsAvailable: captions.isSupported,
+                showingRecent: showingRecent,
+                onCaptions: toggleCaptions,
+                onRecent: { showingRecent = true }
+            )
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 20)
@@ -184,6 +216,8 @@ struct LiveRadioView: View {
         switch route {
         case .history:
             PlayHistoryView()
+        case .transcript:
+            TranscriptView()
         }
     }
 }
@@ -193,14 +227,6 @@ struct LiveRadioView: View {
         .environmentObject(RadioPlayerModel())
         .environmentObject(ScheduleStore())
         .modelContainer(for: FavouriteTrack.self, inMemory: true)
-}
-
-private extension View {
-    func plainListRow() -> some View {
-        listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-    }
 }
 
 private extension ToolbarContent {

@@ -1,15 +1,18 @@
 import SafariServices
 import UIKit
 
-// Presents UIKit's own modal screens (in-app Safari, alerts) from the top-most
-// view controller. Wrapping them in a SwiftUI `.sheet` breaks after the first
-// use: they dismiss themselves when done, which SwiftUI doesn't notice, so it
-// ignores every later request to present.
 enum SystemPresenter {
     // Song pages and the like, kept in the app. Links to other services'
     // universal links (open.spotify.com, ...) still open their apps.
     static func openInApp(_ url: URL) {
         present(SFSafariViewController(url: url))
+    }
+
+    // The share sheet. A SwiftUI `ShareLink` inside a `Menu` does nothing:
+    // the menu closes and takes the link with it before the sheet can open.
+    static func share(_ items: Any...) {
+        let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        present(sheet)
     }
 
     static func alert(title: String, message: String? = nil) {

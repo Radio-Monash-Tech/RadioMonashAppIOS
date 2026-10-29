@@ -6,7 +6,7 @@ nonisolated enum AccentChoice: String, CaseIterable, Identifiable {
     case blue, purple, pink, red, orange, yellow, green, graphite
 
     static let storageKey = "accentColor"
-    /// Kept in the App Group so the Live Activity matches the app.
+    /// Kept in the App Group so the Home Screen widget matches the app.
     static let store = UserDefaults(suiteName: WidgetArtwork.appGroup) ?? .standard
 
     static var current: AccentChoice {

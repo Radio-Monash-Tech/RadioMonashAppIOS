@@ -20,15 +20,15 @@ struct radappApp: App {
     init() {
         let container: ModelContainer
         do {
-            container = try ModelContainer(for: FavouriteTrack.self, SavedArticle.self, ListeningSegment.self)
+            container = try ModelContainer(for: FavouriteTrack.self, SavedArticle.self, ListeningSegment.self, TranscriptSegment.self)
         } catch {
             fatalError("Couldn't open the local database: \(error)")
         }
         self.container = container
         let schedule = ScheduleStore()
         _schedule = StateObject(wrappedValue: schedule)
-        // Created now rather than when the first view appears, so a widget or
-        // Live Activity button that launches the app in the background reaches it.
+        // Created now rather than when the first view appears, so a widget
+        // button that launches the app in the background reaches it.
         let player = RadioPlayerModel(modelContext: container.mainContext, schedule: schedule)
         _player = StateObject(wrappedValue: player)
         UNUserNotificationCenter.current().delegate = ForegroundNotificationPresenter.shared

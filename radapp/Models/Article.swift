@@ -10,6 +10,8 @@ struct Article: Identifiable, Hashable, Codable {
     var webURL: URL?
     var bodyHTML: String
     var readMinutes: Int
+    /// The filter it's tagged under, shown as its label in the list.
+    var topic: ArticleTopic? = nil
 
     var authorInitials: String {
         author.split(separator: " ").compactMap(\.first).prefix(2).map(String.init).joined()
