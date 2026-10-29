@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 import SwiftData
 
@@ -104,11 +105,6 @@ private struct TotalListeningCard: View {
     @Binding var selection: Int?
     @Environment(\.accentChoice) private var accent
 
-    private var selected: ListeningStats.Bucket? {
-        let index = selection ?? stats.currentBucket
-        return stats.buckets.indices.contains(index) ? stats.buckets[index] : nil
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
@@ -130,27 +126,14 @@ private struct TotalListeningCard: View {
                     .padding(.top, 6)
             }
 
-            if let selected {
-                HStack {
-                    Text(selected.title)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(ListeningDuration.format(selected.seconds))
-                        .fontWeight(.semibold)
-                        .monospacedDigit()
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .padding(.top, 20)
-            }
-
             ListeningBarChart(
                 buckets: stats.buckets,
                 average: stats.average,
                 selection: selection ?? stats.currentBucket,
                 select: { selection = $0 }
             )
+            // A fresh chart per period, so the bars grow in again on each switch.
+            .id(stats.period)
             .padding(.top, 20)
         }
         .statsCard()
@@ -203,86 +186,124 @@ private struct ListeningBarChart: View {
     let average: TimeInterval?
     let selection: Int
     let select: (Int) -> Void
+    @State private var scrubbed: String?
+    @State private var hasGrown = false
     @Environment(\.accentChoice) private var accent
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let chartHeight: CGFloat = 220
     private var isDense: Bool { buckets.count > 12 }
-    private var spacing: CGFloat { isDense ? 3 : 8 }
     /// At least an hour, so a few minutes of listening doesn't fill the chart.
     private var maxValue: TimeInterval { max(buckets.map(\.seconds).max() ?? 0, average ?? 0, 3600) }
+    /// Empty days still get a short stub so the row of bars reads as a timeline.
+    private var stub: TimeInterval { maxValue * 0.027 }
+
+    /// Gridline spacing: the first step that gives four lines or fewer.
+    private var gridStep: TimeInterval {
+        let hour: TimeInterval = 3600
+        let steps = [0.5, 1, 2, 3, 6, 12, 24, 48, 100].map { $0 * hour }
+        return steps.first { maxValue / $0 <= 4 } ?? steps.last!
+    }
+
+    private var selectedBucket: ListeningStats.Bucket? {
+        buckets.indices.contains(selection) ? buckets[selection] : nil
+    }
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(alignment: .bottom, spacing: spacing) {
-                ForEach(buckets) { bucket in
-                    UnevenRoundedRectangle(cornerRadii: .init(topLeading: isDense ? 3 : 5, bottomLeading: 3,
-                                                               bottomTrailing: 3, topTrailing: isDense ? 3 : 5),
-                                           style: .continuous)
-                        .fill(color(for: bucket))
-                        .frame(height: height(for: bucket))
-                        .frame(maxWidth: .infinity)
-                }
+        Chart {
+            ForEach(buckets) { bucket in
+                BarMark(
+                    x: .value("Period", String(bucket.id)),
+                    y: .value("Listening", hasGrown ? barValue(bucket) : 0),
+                    width: .ratio(isDense ? 0.75 : 0.7)
+                )
+                .foregroundStyle(color(for: bucket))
+                .clipShape(UnevenRoundedRectangle(cornerRadii: .init(topLeading: isDense ? 3 : 5, bottomLeading: 3,
+                                                                     bottomTrailing: 3, topTrailing: isDense ? 3 : 5),
+                                                  style: .continuous))
+                .accessibilityLabel(bucket.title)
+                .accessibilityValue(ListeningDuration.format(bucket.seconds))
             }
-            .frame(height: chartHeight, alignment: .bottom)
-            .overlay(alignment: .bottom) { averageLine }
-            .contentShape(Rectangle())
-            .overlay {
-                GeometryReader { proxy in
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture { location in
-                            let index = Int(location.x / proxy.size.width * CGFloat(buckets.count))
-                            guard buckets.indices.contains(index), !buckets[index].isFuture else { return }
-                            select(index)
-                        }
-                }
-            }
-            .animation(.snappy, value: selection)
-            .sensoryFeedback(.selection, trigger: selection)
 
-            HStack(spacing: spacing) {
-                ForEach(buckets) { bucket in
-                    Text(bucket.axisLabel)
-                        .font(.caption)
-                        .fontWeight(bucket.id == selection ? .semibold : .regular)
-                        .foregroundStyle(bucket.id == selection ? .primary : .secondary)
-                        .fixedSize()
-                        .frame(maxWidth: .infinity)
+            if let average {
+                RuleMark(y: .value("Average", average))
+                    .foregroundStyle(Color.secondary)
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                    .annotation(position: .top, alignment: .leading, spacing: 4) {
+                        Text("avg \(ListeningDuration.format(average))")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            // Card-coloured backing so the label stays readable over bars.
+                            .background(Color(.secondarySystemGroupedBackground),
+                                        in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    }
+                    .accessibilityHidden(true)
+            }
+
+            // The pop-up above the selected bar, in place of a separate readout.
+            if let selectedBucket {
+                RuleMark(x: .value("Period", String(selectedBucket.id)))
+                    .foregroundStyle(accent.color.opacity(0.25))
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .zIndex(-1)
+                    .annotation(position: .top, spacing: 6,
+                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        SelectionCallout(title: selectedBucket.title, seconds: selectedBucket.seconds)
+                    }
+                    .accessibilityHidden(true)
+            }
+        }
+        .chartYScale(domain: 0...maxValue)
+        .chartYAxis {
+            AxisMarks(position: .trailing, values: .stride(by: gridStep)) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                if let seconds = value.as(Double.self), seconds > 0 {
+                    AxisValueLabel(hourLabel(seconds))
                 }
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Listening chart")
-        .accessibilityValue(buckets.indices.contains(selection)
-                            ? "\(buckets[selection].title), \(ListeningDuration.format(buckets[selection].seconds))" : "")
-        .accessibilityAdjustableAction { direction in
-            let step = direction == .increment ? 1 : -1
-            let next = selection + step
-            if buckets.indices.contains(next), !buckets[next].isFuture { select(next) }
+        .chartXAxis {
+            AxisMarks { value in
+                if let id = value.as(String.self).flatMap(Int.init), buckets.indices.contains(id) {
+                    AxisValueLabel(centered: true, collisionResolution: .disabled) {
+                        Text(buckets[id].axisLabel)
+                            .font(.caption)
+                            .fontWeight(id == selection ? .semibold : .regular)
+                            .foregroundStyle(id == selection ? .primary : .secondary)
+                    }
+                }
+            }
+        }
+        // Tap or drag across the bars to pick a day (or month).
+        .chartXSelection(value: $scrubbed)
+        .onChange(of: scrubbed) { _, scrubbed in
+            guard let id = scrubbed.flatMap(Int.init), buckets.indices.contains(id),
+                  !buckets[id].isFuture, id != selection else { return }
+            select(id)
+        }
+        // Room above the plot for the pop-up.
+        .padding(.top, 54)
+        .frame(height: 290)
+        .animation(.snappy, value: selection)
+        .sensoryFeedback(.selection, trigger: selection)
+        .onAppear {
+            guard !hasGrown else { return }
+            if reduceMotion {
+                hasGrown = true
+            } else {
+                withAnimation(.smooth(duration: 0.6)) { hasGrown = true }
+            }
         }
     }
 
-    @ViewBuilder
-    private var averageLine: some View {
-        if let average {
-            let y = chartHeight * average / maxValue
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("avg \(ListeningDuration.format(average))")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Line()
-                    .stroke(Color.secondary, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                    .frame(height: 1)
-            }
-            .padding(.bottom, y)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
+    private func barValue(_ bucket: ListeningStats.Bucket) -> TimeInterval {
+        bucket.seconds > 0 ? max(bucket.seconds, stub) : stub
     }
 
-    private func height(for bucket: ListeningStats.Bucket) -> CGFloat {
-        guard bucket.seconds > 0 else { return 6 }
-        return max(6, chartHeight * bucket.seconds / maxValue)
+    /// "30m", "1h", "12h"
+    private func hourLabel(_ seconds: TimeInterval) -> String {
+        seconds < 3600 ? "\(Int(seconds / 60))m" : "\(Int(seconds / 3600))h"
     }
 
     private func color(for bucket: ListeningStats.Bucket) -> Color {
@@ -291,12 +312,25 @@ private struct ListeningBarChart: View {
     }
 }
 
-private struct Line: Shape {
-    func path(in rect: CGRect) -> Path {
-        Path { path in
-            path.move(to: CGPoint(x: rect.minX, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+/// "Thursday / 48m" above the selected bar.
+private struct SelectionCallout: View {
+    let title: String
+    let seconds: TimeInterval
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(ListeningDuration.format(seconds))
+                .font(.headline)
+                .monospacedDigit()
         }
+        .lineLimit(1)
+        .fixedSize()
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -326,6 +360,8 @@ private struct WhenYouListenCard: View {
     let stats: ListeningStats
     @Environment(\.accentChoice) private var accent
 
+    @ScaledMetric(relativeTo: .footnote) private var dayLabelWidth: CGFloat = 34
+
     private var strongest: TimeInterval { stats.heatmap.flatMap { $0 }.max() ?? 0 }
 
     var body: some View {
@@ -336,30 +372,48 @@ private struct WhenYouListenCard: View {
                     .foregroundStyle(.secondary)
             }
 
-            Grid(horizontalSpacing: 6, verticalSpacing: 6) {
-                GridRow {
-                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
-                    ForEach(ListeningStats.heatmapColumns, id: \.self) { label in
-                        Text(label)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                ForEach(Array(ListeningStats.heatmapRows.enumerated()), id: \.offset) { day, label in
-                    GridRow {
-                        Text(label)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .gridColumnAlignment(.leading)
-                            .padding(.trailing, 4)
-                        ForEach(0..<6, id: \.self) { column in
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(color(level: level(stats.heatmap[day][column])))
-                                .frame(height: 36)
-                                .frame(maxWidth: .infinity)
+            // Labels sit outside the chart so the cells can fill the card edge to edge.
+            VStack(spacing: 8) {
+                HStack(spacing: 10) {
+                    Color.clear.frame(width: dayLabelWidth, height: 1)
+                    HStack(spacing: 0) {
+                        ForEach(ListeningStats.heatmapColumns, id: \.self) { label in
+                            Text(label).frame(maxWidth: .infinity)
                         }
                     }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(ListeningStats.heatmapRows, id: \.self) { label in
+                            Text(label).frame(maxHeight: .infinity)
+                        }
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(width: dayLabelWidth, alignment: .leading)
+
+                    Chart {
+                        ForEach(Array(ListeningStats.heatmapRows.enumerated()), id: \.offset) { day, dayLabel in
+                            ForEach(Array(ListeningStats.heatmapColumns.enumerated()), id: \.offset) { column, timeLabel in
+                                RectangleMark(
+                                    x: .value("Time", timeLabel),
+                                    y: .value("Day", dayLabel),
+                                    width: .ratio(0.88),
+                                    height: .ratio(0.86)
+                                )
+                                .foregroundStyle(color(level: level(stats.heatmap[day][column])))
+                                .cornerRadius(7, style: .continuous)
+                            }
+                        }
+                    }
+                    .chartXScale(domain: ListeningStats.heatmapColumns)
+                    .chartYScale(domain: ListeningStats.heatmapRows)
+                    .chartXAxis(.hidden)
+                    .chartYAxis(.hidden)
+                }
+                .frame(height: 7 * 42)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Listening by day and time")
