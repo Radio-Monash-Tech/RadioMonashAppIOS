@@ -41,7 +41,8 @@ struct LiveShowEvent: Decodable {
     let media: Media?
 
     struct Media: Decodable {
-        /// `live` for a presenter broadcasting in; other values are pre-recorded.
+        /// `live` for a presenter broadcasting in, `playlist` for library tracks;
+        /// other values are pre-recorded.
         let type: String?
     }
 }
@@ -93,8 +94,11 @@ extension ScheduleLiveResponse {
 
     /// RadioCult reports a show from its scheduled start, but a live slot isn't on air
     /// until the presenter connects; until then the playlist keeps playing library tracks.
+    /// A playlist show has no presenter at all, just library tracks with their covers,
+    /// so it plays like music, as on the website.
     private var onAirShow: LiveShowEvent? {
         guard let show = result.show else { return nil }
+        if show.media?.type == "playlist" { return nil }
         let awaitingPresenter = show.media?.type == "live" && metadata?.trackId != nil
         return awaitingPresenter ? nil : show
     }

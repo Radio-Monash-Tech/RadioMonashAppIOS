@@ -13,6 +13,8 @@ final class SavedArticle {
     var bodyHTML: String
     var readMinutes: Int
     var savedAt: Date
+    /// Its photos are stored on the phone too, not just the text.
+    var isDownloaded: Bool = false
 
     init(article: Article, savedAt: Date = .now) {
         articleID = article.id
@@ -45,10 +47,42 @@ final class SavedArticle {
 extension ModelContext {
     func toggleSaved(_ article: Article, existing: SavedArticle?) {
         if let existing {
-            delete(existing)
+            unsave(existing)
         } else {
             insert(SavedArticle(article: article))
+            try? save()
         }
+    }
+
+    /// Removes the bookmark and any downloaded photos.
+    func unsave(_ saved: SavedArticle) {
+        if saved.isDownloaded {
+            ArticleDownloads.remove(ArticleDownloads.imageURLs(for: saved.article))
+        }
+        delete(saved)
+        try? save()
+    }
+
+    /// Downloads the article's photos, bookmarking it first if needed.
+    /// Returns `false` if the download failed.
+    func download(_ article: Article, existing: SavedArticle?) async -> Bool {
+        let saved = existing ?? SavedArticle(article: article)
+        if existing == nil { insert(saved) }
+        let urls = ArticleDownloads.imageURLs(for: article)
+        let succeeded = await ArticleDownloads.download(urls)
+        if succeeded {
+            saved.isDownloaded = true
+        } else {
+            ArticleDownloads.remove(urls)
+        }
+        try? save()
+        return succeeded
+    }
+
+    /// Deletes the photos but keeps the bookmark.
+    func removeDownload(_ saved: SavedArticle) {
+        ArticleDownloads.remove(ArticleDownloads.imageURLs(for: saved.article))
+        saved.isDownloaded = false
         try? save()
     }
 }

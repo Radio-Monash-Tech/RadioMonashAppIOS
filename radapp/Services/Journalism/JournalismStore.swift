@@ -13,13 +13,21 @@ final class JournalismStore: ObservableObject {
     @Published private(set) var loadMoreFailed = false
     /// The filter picked at the top of Journalism; `nil` is All.
     @Published private(set) var topic: ArticleTopic?
+    /// When the shown articles were downloaded, set only while the latest
+    /// download failed and the saved copy is on screen instead.
+    @Published private(set) var offlineCopyDate: Date?
 
     private let client = SquarespaceClient.shared
     private var nextOffset: Int64?
     private var loadedAt: Date?
+    private var cachedAt: Date?
     private let staleAfter: TimeInterval = 15 * 60
 
     var hasMore: Bool { nextOffset != nil }
+
+    init() {
+        showSavedCopy()
+    }
 
     func loadIfNeeded() async {
         if let loadedAt, Date().timeIntervalSince(loadedAt) < staleAfter { return }
@@ -31,9 +39,22 @@ final class JournalismStore: ObservableObject {
     func select(_ topic: ArticleTopic?) async {
         guard topic != self.topic else { return }
         self.topic = topic
-        articles = []
         nextOffset = nil
+        offlineCopyDate = nil
+        showSavedCopy()
         await load()
+    }
+
+    /// Puts the saved first page for the current filter on screen, if there is one.
+    private func showSavedCopy() {
+        let cached = OfflineCache.load([Article].self, named: cacheName(for: topic))
+        articles = cached?.value ?? []
+        cachedAt = cached?.savedAt
+    }
+
+    /// One saved first page per filter: "articles-all", "articles-popCulture"…
+    private func cacheName(for topic: ArticleTopic?) -> String {
+        "articles-" + (topic.map { "\($0)" } ?? "all")
     }
 
     func load() async {
@@ -47,11 +68,18 @@ final class JournalismStore: ObservableObject {
             nextOffset = page.nextOffset
             loadMoreFailed = false
             loadedAt = .now
+            cachedAt = .now
+            offlineCopyDate = nil
             phase = .loaded
+            OfflineCache.save(page.articles, as: cacheName(for: topic))
         } catch {
             guard topic == self.topic else { return }
             if Self.isCancellation(error) {
                 phase = articles.isEmpty ? .idle : .loaded
+            } else if !articles.isEmpty {
+                // Keep showing the saved copy rather than an error.
+                offlineCopyDate = cachedAt
+                phase = .loaded
             } else {
                 phase = .failed(Self.message(for: error))
             }

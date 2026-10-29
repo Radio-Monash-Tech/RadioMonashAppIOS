@@ -11,7 +11,7 @@ struct SavedArticlesView: View {
                 ContentUnavailableView(
                     "No Saved Articles",
                     systemImage: "bookmark",
-                    description: Text("Tap the bookmark in any article to keep it here for offline reading.")
+                    description: Text("Tap the bookmark in any article to keep its text here. Tap download to keep its photos too.")
                 )
             } else {
                 List {
@@ -21,12 +21,16 @@ struct SavedArticlesView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(article.title).font(.headline)
                                 ArticleByline(article: article)
+                                if saved.isDownloaded {
+                                    Label("Downloaded", systemImage: "arrow.down.circle.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
                     }
                     .onDelete { offsets in
-                        for index in offsets { modelContext.delete(savedArticles[index]) }
-                        try? modelContext.save()
+                        for index in offsets { modelContext.unsave(savedArticles[index]) }
                     }
                 }
             }

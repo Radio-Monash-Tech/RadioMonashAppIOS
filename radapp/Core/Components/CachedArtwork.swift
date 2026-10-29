@@ -17,6 +17,7 @@ final class ArtworkCache {
         if let task = inFlight[url] { return await task.value }
 
         let task = Task<UIImage?, Never> {
+            if let data = ArticleDownloads.data(for: url) { return UIImage(data: data) }
             guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
             return UIImage(data: data)
         }

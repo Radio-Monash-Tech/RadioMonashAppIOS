@@ -44,6 +44,13 @@ struct ScheduleView: View {
                     .listRowBackground(Color.clear)
             }
 
+            if let savedAt = schedule.offlineCopyDate {
+                OfflineNote(savedAt: savedAt)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
+
             content
         }
         .listStyle(.plain)

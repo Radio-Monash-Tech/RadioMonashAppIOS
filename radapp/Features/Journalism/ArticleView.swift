@@ -9,6 +9,8 @@ struct ArticleView: View {
     @AppStorage("readerTextSize") private var textSize: ReaderTextSize = .standard
     @State private var blocks: [ArticleBlock]?
     @State private var viewerImage: ViewerImage?
+    @State private var isDownloading = false
+    @State private var downloadFailed = false
     @Namespace private var imageNamespace
 
     private var savedCopy: SavedArticle? {
@@ -65,6 +67,11 @@ struct ArticleView: View {
             guard blocks == nil else { return }
             blocks = contentBlocks()
         }
+        .alert("Couldn't Download", isPresented: $downloadFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Some photos couldn't be downloaded. The text is still saved. Check your connection and try again.")
+        }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Menu {
@@ -83,6 +90,8 @@ struct ArticleView: View {
                 }
                 .sensoryFeedback(.success, trigger: savedCopy != nil) { _, isSaved in isSaved }
 
+                downloadButton
+
                 ShareLink(
                     item: article.webURL ?? SquarespaceClient.siteURL,
                     subject: Text(article.title),
@@ -98,6 +107,31 @@ struct ArticleView: View {
 
     private func toggleSaved() {
         modelContext.toggleSaved(article, existing: savedCopy)
+    }
+
+    @ViewBuilder
+    private var downloadButton: some View {
+        if isDownloading {
+            ProgressView()
+                .accessibilityLabel("Downloading")
+        } else if let savedCopy, savedCopy.isDownloaded {
+            Button {
+                modelContext.removeDownload(savedCopy)
+            } label: {
+                Label("Remove Download", systemImage: "arrow.down.circle.fill")
+            }
+        } else {
+            Button {
+                Task {
+                    isDownloading = true
+                    downloadFailed = await !modelContext.download(article, existing: savedCopy)
+                    isDownloading = false
+                }
+            } label: {
+                Label("Download for Offline", systemImage: "arrow.down.circle")
+            }
+            .sensoryFeedback(.success, trigger: savedCopy?.isDownloaded == true) { _, isDownloaded in isDownloaded }
+        }
     }
 }
 

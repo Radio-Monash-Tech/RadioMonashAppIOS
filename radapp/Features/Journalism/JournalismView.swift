@@ -46,6 +46,12 @@ struct JournalismView: View {
             .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
+            if let savedAt = journalism.offlineCopyDate {
+                OfflineNote(savedAt: savedAt)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
             content
         }
         .listStyle(.plain)

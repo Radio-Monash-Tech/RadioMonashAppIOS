@@ -1,6 +1,6 @@
 import Foundation
 
-struct ShowSeries: Identifiable, Hashable {
+struct ShowSeries: Identifiable, Hashable, Codable {
     let id: String
     var title: String
     var hosts: [String]
@@ -11,7 +11,7 @@ struct ShowSeries: Identifiable, Hashable {
     }
 }
 
-struct ScheduledShow: Identifiable, Hashable {
+struct ScheduledShow: Identifiable, Hashable, Codable {
     let id: String
     let series: ShowSeries
     let start: Date

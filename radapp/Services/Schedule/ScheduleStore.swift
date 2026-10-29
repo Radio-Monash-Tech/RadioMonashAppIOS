@@ -9,10 +9,23 @@ final class ScheduleStore: ObservableObject {
 
     @Published private(set) var shows: [ScheduledShow] = []
     @Published private(set) var phase: Phase = .idle
+    /// When the shown schedule was downloaded, set only while the latest
+    /// download failed and the saved copy is on screen instead.
+    @Published private(set) var offlineCopyDate: Date?
 
     private let client = RadioCultClient.shared
     private var loadedAt: Date?
+    private var cachedAt: Date?
     private let staleAfter: TimeInterval = 15 * 60
+    private static let cacheName = "schedule"
+
+    init() {
+        // Show the last schedule straight away; the first load replaces it.
+        if let cached = OfflineCache.load([ScheduledShow].self, named: Self.cacheName) {
+            shows = cached.value
+            cachedAt = cached.savedAt
+        }
+    }
 
     var week: [Date] {
         let calendar = Calendar.melbourne
@@ -53,15 +66,24 @@ final class ScheduleStore: ObservableObject {
         do {
             shows = try await client.schedule(from: interval.start, to: interval.end)
             loadedAt = .now
+            cachedAt = .now
+            offlineCopyDate = nil
             phase = .loaded
+            OfflineCache.save(shows, as: Self.cacheName)
         } catch is CancellationError {
             phase = shows.isEmpty ? .idle : .loaded
         } catch let error as URLError where error.code == .cancelled {
             phase = shows.isEmpty ? .idle : .loaded
-        } catch let error as URLError where error.code == .notConnectedToInternet {
-            phase = .failed("You're offline. Connect to the internet to see this week's shows.")
         } catch {
-            phase = .failed((error as? LocalizedError)?.errorDescription ?? "Couldn't load the schedule.")
+            if !shows.isEmpty {
+                // Keep showing the saved copy rather than an error.
+                offlineCopyDate = cachedAt
+                phase = .loaded
+            } else if (error as? URLError)?.code == .notConnectedToInternet {
+                phase = .failed("You're offline. Connect to the internet to see this week's shows.")
+            } else {
+                phase = .failed((error as? LocalizedError)?.errorDescription ?? "Couldn't load the schedule.")
+            }
         }
     }
 }
