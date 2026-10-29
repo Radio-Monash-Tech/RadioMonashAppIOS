@@ -121,7 +121,7 @@ struct SettingsView: View {
                 if case .unsupported(let reason) = player.captions.availability {
                     Text(reason + " The rest of the app works as normal.")
                 } else {
-                    Text("Turn captions on or off with the CC button on the Live tab. Captions are made on this iPhone; no audio leaves it.")
+                    Text("Turn captions on or off with the CC button on the Live tab. Captions are made on this iPhone")
                 }
             }
 
