@@ -1,7 +1,7 @@
 import SwiftUI
 import WidgetKit
 
-/// The large widget: the medium layout, plus the show's progress and the
+/// The large widget: the medium layout, plus when the show ends and the
 /// rest of today's schedule.
 struct LargeRadioView: View {
     let entry: RadioEntry
@@ -34,7 +34,7 @@ struct LargeRadioView: View {
             }
             .padding(.top, s.isOnAir ? 12 : 0)
 
-            if s.isOnAir { showProgress.padding(.top, 14) }
+            if s.isOnAir { showTiming.padding(.top, 14) }
 
             Divider().padding(.top, 14).padding(.bottom, 10)
 
@@ -81,37 +81,21 @@ struct LargeRadioView: View {
         .containerBackground(widgetBackground(s), for: .widget)
     }
 
-    /// The app only sends today's shows; ones that have started since are
-    /// dropped, so a widget left overnight doesn't list yesterday's.
     private var upNext: [RadioWidgetSnapshot.UpcomingShow] {
         Array(s.upNext.filter { $0.start > entry.date }.prefix(3))
     }
 
-    private var showProgress: some View {
-        VStack(spacing: 6) {
-            HStack {
-                Text(s.showName ?? s.title)
-                    .font(.system(size: 12.5, weight: .medium))
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                if let until = untilText(s) {
-                    Text(until)
-                        .font(.system(size: 12, weight: .medium))
-                        .monospacedDigit()
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            if let start = s.showStart, let end = s.showEnd, end > start {
-                // Live progress through the show, updated by the system without reloads.
-                ProgressView(timerInterval: start...end, countsDown: false) {
-                    EmptyView()
-                } currentValueLabel: {
-                    EmptyView()
-                }
-                .progressViewStyle(.linear)
-                .tint(AccentChoice.current.color)
-            } else {
-                ProgressView(value: 0).tint(AccentChoice.current.color)
+    private var showTiming: some View {
+        HStack {
+            Text(s.showName ?? s.title)
+                .font(.system(size: 12.5, weight: .medium))
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            if let until = untilText(s) {
+                Text(until)
+                    .font(.system(size: 12, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.tertiary)
             }
         }
     }
