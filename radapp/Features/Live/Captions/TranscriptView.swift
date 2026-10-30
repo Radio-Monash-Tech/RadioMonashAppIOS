@@ -1,51 +1,48 @@
 import SwiftUI
-import SwiftData
 
-/// Everything captioned in the last two weeks, newest first: talk with the
-/// tracks that played in between. Search highlights matches, and a long
+/// The captions from this listen, oldest first: the same lines the Live
+/// screen keeps, so you can scroll back and search them. Nothing is saved to
+/// the iPhone, so they go when captions restart or the app closes. A long
 /// press copies or shares a line as a quote.
 struct TranscriptView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \TranscriptSegment.startedAt, order: .reverse) private var segments: [TranscriptSegment]
+    @EnvironmentObject private var player: RadioPlayerModel
     @State private var search = ""
-    @State private var confirmingClear = false
 
-    private var results: [TranscriptSegment] {
-        let query = search.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return segments }
-        return segments.filter {
-            $0.text.localizedCaseInsensitiveContains(query) || ($0.showName?.localizedCaseInsensitiveContains(query) ?? false)
-        }
+    private var captions: CaptionCoordinator { player.captions }
+
+    private var allLines: [CaptionLine] {
+        captions.lines + (captions.liveLine.map { [$0] } ?? [])
     }
 
-    /// Sections by day, newest first.
-    private var days: [(day: Date, segments: [TranscriptSegment])] {
-        let calendar = Calendar.current
-        let grouped = Dictionary(grouping: results) { calendar.startOfDay(for: $0.startedAt) }
-        return grouped.keys.sorted(by: >).map { ($0, grouped[$0] ?? []) }
+    private var results: [CaptionLine] {
+        let query = search.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return allLines }
+        return allLines.filter { $0.text.localizedCaseInsensitiveContains(query) }
     }
 
     var body: some View {
         List {
-            ForEach(days, id: \.day) { day in
-                Section(day.day.formatted(.dateTime.weekday(.wide).day().month())) {
-                    ForEach(day.segments) { segment in
-                        TranscriptRow(segment: segment, highlight: search)
-                            .contextMenu {
+            Section {
+                ForEach(results) { line in
+                    TranscriptRow(line: line, highlight: search)
+                        .contextMenu {
+                            Button {
+                                UIPasteboard.general.string = line.text
+                            } label: {
+                                Label("Copy", systemImage: "doc.on.doc")
+                            }
+                            if case .host(let show) = line.speaker {
                                 Button {
-                                    UIPasteboard.general.string = segment.text
+                                    SystemPresenter.share("“\(line.text)”\n— \(show) on Radio Monash")
                                 } label: {
-                                    Label("Copy", systemImage: "doc.on.doc")
-                                }
-                                if segment.kind == .talk {
-                                    Button {
-                                        SystemPresenter.share(quote(for: segment))
-                                    } label: {
-                                        Label("Share Quote", systemImage: "quote.bubble")
-                                    }
+                                    Label("Share Quote", systemImage: "quote.bubble")
                                 }
                             }
-                    }
+                        }
+                }
+            } footer: {
+                if !allLines.isEmpty {
+                    Text("Only the latest captions are kept, and nothing is saved to this iPhone.")
                 }
             }
         }
@@ -54,59 +51,46 @@ struct TranscriptView: View {
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $search, prompt: "Search what was said")
         .overlay {
-            if segments.isEmpty {
+            if allLines.isEmpty {
                 ContentUnavailableView(
-                    "No Transcript Yet",
+                    "No Captions Yet",
                     systemImage: "captions.bubble",
-                    description: Text("Turn on CC while the radio plays, and what's said on air appears here.")
+                    description: Text("Turn on CC while the radio plays, and the latest captions appear here. Nothing is saved to this iPhone.")
                 )
             } else if results.isEmpty {
                 ContentUnavailableView.search(text: search)
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Clear", role: .destructive) { confirmingClear = true }
-                    .disabled(segments.isEmpty)
-            }
-        }
-        .confirmationDialog("Clear the whole transcript?", isPresented: $confirmingClear, titleVisibility: .visible) {
-            Button("Clear Transcript", role: .destructive) {
-                try? modelContext.delete(model: TranscriptSegment.self)
-                try? modelContext.save()
-            }
-        } message: {
-            Text("This only removes the text saved on this iPhone.")
-        }
-    }
-
-    private func quote(for segment: TranscriptSegment) -> String {
-        let source = segment.showName.map { "\($0) on Radio Monash" } ?? "Radio Monash"
-        return "“\(segment.text)”\n— \(source), \(segment.startedAt.formatted(date: .abbreviated, time: .shortened))"
     }
 }
 
 private struct TranscriptRow: View {
-    let segment: TranscriptSegment
+    let line: CaptionLine
     let highlight: String
+
+    private var isLyric: Bool {
+        if case .lyrics = line.speaker { true } else { false }
+    }
+
+    private var source: String {
+        switch line.speaker {
+        case .host(let show): show
+        case .lyrics(let track): track
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Text(segment.startedAt, format: .dateTime.hour().minute())
-                    .font(.caption.monospacedDigit())
+                KindPill(isLyric: isLyric)
+                Text(source)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
-                KindPill(kind: segment.kind)
-                if let show = segment.showName {
-                    Text(show)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                    .lineLimit(1)
             }
             Text(highlighted)
-                .font(segment.kind == .talk ? .body : .subheadline.italic())
-                .foregroundStyle(segment.kind == .talk ? .primary : .secondary)
+                .font(isLyric ? .subheadline.italic() : .body)
+                .foregroundStyle(isLyric ? .secondary : .primary)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
@@ -114,7 +98,7 @@ private struct TranscriptRow: View {
 
     /// The text with every search match marked.
     private var highlighted: AttributedString {
-        var text = AttributedString(segment.text)
+        var text = AttributedString(line.text)
         let query = highlight.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return text }
         var searchFrom = text.startIndex
@@ -127,15 +111,15 @@ private struct TranscriptRow: View {
 }
 
 private struct KindPill: View {
-    let kind: CaptionMode
+    let isLyric: Bool
 
     var body: some View {
-        Text(kind == .talk ? "Talk" : "Music")
+        Text(isLyric ? "Lyrics" : "Talk")
             .font(.caption2.weight(.bold))
             .foregroundStyle(.white)
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
-            .background(kind == .talk ? Color.orange : Color.green, in: Capsule())
+            .background(isLyric ? Color.green : Color.orange, in: Capsule())
     }
 }
 
@@ -143,5 +127,5 @@ private struct KindPill: View {
     NavigationStack {
         TranscriptView()
     }
-    .modelContainer(for: TranscriptSegment.self, inMemory: true)
+    .environmentObject(RadioPlayerModel())
 }

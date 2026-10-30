@@ -30,26 +30,26 @@ struct AppTabView: View {
     var body: some View {
         TabView(selection: $selection) {
             Tab("Live", systemImage: "dot.radiowaves.left.and.right", value: .live) {
-                LiveRadioView()
+                LiveRadioView().modifier(tabContent)
             }
             Tab("Schedule", systemImage: "calendar", value: .schedule) {
-                ScheduleView().modifier(miniPlayerInset)
+                ScheduleView().modifier(tabContent)
             }
             Tab("Journalism", systemImage: "newspaper", value: .journalism) {
-                JournalismView().modifier(miniPlayerInset)
+                JournalismView().modifier(tabContent)
             }
             Tab("Library", systemImage: "books.vertical", value: .library) {
-                LibraryView().modifier(miniPlayerInset)
+                LibraryView().modifier(tabContent)
             }
             // In landscape, iOS pins the other tabs left and a search-role tab
             // right; as an ordinary tab, Search joins one centred bar instead.
             if isLandscape {
                 Tab("Search", systemImage: "magnifyingglass", value: .search) {
-                    SearchView().modifier(miniPlayerInset)
+                    SearchView().modifier(tabContent)
                 }
             } else {
                 Tab(value: .search, role: .search) {
-                    SearchView().modifier(miniPlayerInset)
+                    SearchView().modifier(tabContent)
                 }
             }
         }
@@ -73,8 +73,22 @@ struct AppTabView: View {
         }
     }
 
-    private var miniPlayerInset: LegacyMiniPlayerInset {
-        LegacyMiniPlayerInset(isEnabled: selection != .live) { selection = .live }
+    private var tabContent: TabContent {
+        TabContent(accent: accent.color, showsMiniPlayer: selection != .live) { selection = .live }
+    }
+}
+
+// What every tab's screen needs. On iOS 26 the TabView's tint only colours
+// the tab bar, not the screens inside it, so each tab is tinted again here.
+private struct TabContent: ViewModifier {
+    let accent: Color
+    let showsMiniPlayer: Bool
+    let onOpenPlayer: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .modifier(LegacyMiniPlayerInset(isEnabled: showsMiniPlayer, onOpen: onOpenPlayer))
+            .tint(accent)
     }
 }
 

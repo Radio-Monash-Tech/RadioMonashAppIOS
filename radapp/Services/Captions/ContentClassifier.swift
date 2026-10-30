@@ -8,7 +8,7 @@ nonisolated enum CaptionMode: String, Sendable {
 }
 
 /// Decides whether the station is playing talk or music, so lyrics can be
-/// shown differently and kept out of the transcript. RadioCult's metadata comes first: with nobody presenting
+/// shown differently. RadioCult's metadata comes first: with nobody presenting
 /// (the automated playlist, or a playlist show) it's always music. During a
 /// presenter's show Apple's built-in sound classifier listens, and a change
 /// only counts once it has held for a moment, so a host talking over a song

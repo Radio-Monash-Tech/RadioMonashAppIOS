@@ -1,7 +1,6 @@
 import AVFoundation
 import Synchronization
 import Observation
-import SwiftData
 
 /// The one place the caption UI reads from: whether captions can run, are
 /// on, and what they currently say. Starts the pipeline while captions are
@@ -18,8 +17,7 @@ final class CaptionCoordinator {
             refresh()
         }
     }
-    /// Caption song lyrics too, not just talk. Lyrics show on screen but are
-    /// never saved to the transcript.
+    /// Caption song lyrics too, not just talk.
     var captionsMusic = UserDefaults.standard.object(forKey: Keys.music) as? Bool ?? true {
         didSet {
             UserDefaults.standard.set(captionsMusic, forKey: Keys.music)
@@ -41,11 +39,8 @@ final class CaptionCoordinator {
     private(set) var liveLine: CaptionLine?
     private(set) var errorMessage: String?
     private(set) var isPlaying = false
-    /// What the music card shows: the track, when RadioCult names it.
-    private(set) var musicDescription: String?
 
     @ObservationIgnored private let bridge = AudioTapBridge()
-    @ObservationIgnored private let transcript: TranscriptStore?
     @ObservationIgnored private weak var playerItem: AVPlayerItem?
     @ObservationIgnored private var locale: Locale?
     @ObservationIgnored private var runTask: Task<Void, Never>?
@@ -65,8 +60,7 @@ final class CaptionCoordinator {
         static let seenIntro = "captionsSeenIntro"
     }
 
-    init(modelContext: ModelContext?) {
-        transcript = modelContext.map(TranscriptStore.init)
+    init() {
         Task { await checkAvailability() }
     }
 
@@ -160,10 +154,6 @@ final class CaptionCoordinator {
         self.nowPlaying = nowPlaying
         self.vocabulary = vocabulary
         setHint?(hint)
-        musicDescription = nowPlaying == .offAir ? nil : "\(nowPlaying.title) – \(nowPlaying.artist)"
-        if mode == .music, let musicDescription {
-            transcript?.appendMusic(musicDescription, showName: liveShow?.name)
-        }
     }
 
     /// With no presenter on air there's nobody to caption.
@@ -200,7 +190,6 @@ final class CaptionCoordinator {
         errorMessage = nil
         lines = []
         liveLine = nil
-        transcript?.beginSession()
 
         Task.detached(priority: .userInitiated) {
             await engine.run(audio: audio, locale: locale, vocabulary: vocabulary, hint: hint, events: continuation)
@@ -222,7 +211,6 @@ final class CaptionCoordinator {
         mode = nil
         // Finished lines stay readable after pausing; only the live one goes.
         liveLine = nil
-        transcript?.endTalk()
     }
 
     private func handle(_ event: CaptionEvent) {
@@ -230,10 +218,6 @@ final class CaptionCoordinator {
         case .mode(let newMode):
             guard newMode != mode else { return }
             mode = newMode
-            if newMode == .music {
-                transcript?.endTalk()
-                if let musicDescription { transcript?.appendMusic(musicDescription, showName: liveShow?.name) }
-            }
         case .volatile(let text):
             let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
             liveLine = text.isEmpty ? nil : CaptionLine(id: liveLineID, speaker: speaker, text: text)
@@ -244,17 +228,13 @@ final class CaptionCoordinator {
             lines.append(CaptionLine(id: liveLineID, speaker: speaker, text: text))
             liveLineID = UUID()
             if lines.count > Self.maxLines { lines.removeFirst(lines.count - Self.maxLines) }
-            // Lyrics are shown, not kept: the transcript is for what was said.
-            if mode == .talk {
-                transcript?.appendTalk(text, showName: liveShow?.name)
-            }
         case .failed(let message):
             stop()
             errorMessage = message
         }
     }
 
-    /// Enough to scroll back a little; the transcript keeps the rest.
+    /// Enough to scroll back a little in Transcript. Nothing is saved to the iPhone.
     private static let maxLines = 40
 
     /// The show's host while talking, the song while music plays.

@@ -61,7 +61,7 @@ final class RadioPlayerModel: ObservableObject {
         favourites = modelContext.map(FavouriteStore.init)
         self.schedule = schedule
         listening = modelContext.map(ListeningTracker.init)
-        captions = CaptionCoordinator(modelContext: modelContext)
+        captions = CaptionCoordinator()
         stream.volume = volume
         stream.onItemReady = { [weak self] in self?.captions.playerItemReady($0) }
         stream.onStateChange = { [weak self] state in
