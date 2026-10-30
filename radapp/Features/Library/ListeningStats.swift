@@ -55,15 +55,6 @@ struct ListeningStats {
         case startedListening(Date)
     }
 
-    struct Peak {
-        /// "Weekday", "Weekend", "Tuesday", or nil when it's spread across the week.
-        let days: String?
-        let column: Int
-    }
-
-    static let heatmapColumns = ["12a", "4a", "8a", "12p", "4p", "8p"]
-    static let heatmapRows = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-
     let period: StatsPeriod
     let periodLabel: String
     let total: TimeInterval
@@ -75,9 +66,6 @@ struct ListeningStats {
     let averageSession: TimeInterval
     let longestStreak: Int
     let songsLiked: Int
-    /// Seconds listened, `[weekday Mon…Sun][4-hour block]`.
-    let heatmap: [[TimeInterval]]
-    let peak: Peak?
     let topShows: [ShowTotal]
     let topArtists: [ArtistLikes]
 
@@ -186,30 +174,6 @@ struct ListeningStats {
         }
         longestStreak = longest
 
-        // When you listen
-        var heatmap = Array(repeating: Array(repeating: TimeInterval(0), count: 6), count: 7)
-        for segment in segments {
-            Self.forEachHour(of: segment, in: interval, calendar: calendar) { day, column, seconds in
-                heatmap[day][column] += seconds
-            }
-        }
-        self.heatmap = heatmap
-
-        let columnTotals = (0..<6).map { column in heatmap.reduce(0) { $0 + $1[column] } }
-        if let peakTotal = columnTotals.max(), peakTotal > 0, let column = columnTotals.firstIndex(of: peakTotal) {
-            let strongest = heatmap.map { $0[column] }.max() ?? 0
-            let peakDays = (0..<7).filter { heatmap[$0][column] >= strongest / 2 }
-            let days: String? = switch peakDays.count {
-            case 1: Self.weekdayNames[peakDays[0]]
-            case _ where peakDays.allSatisfy { $0 < 5 }: "Weekday"
-            case _ where peakDays.allSatisfy { $0 >= 5 }: "Weekend"
-            default: nil
-            }
-            peak = Peak(days: days, column: column)
-        } else {
-            peak = nil
-        }
-
         // Top shows, grouped by schedule ID when known, otherwise by name
         var shows: [String: ShowTotal] = [:]
         for segment in segments {
@@ -231,24 +195,6 @@ struct ListeningStats {
         topArtists = Array(artists.values.sorted {
             $0.count != $1.count ? $0.count > $1.count : $0.name.localizedCompare($1.name) == .orderedAscending
         }.prefix(3))
-    }
-
-    private static let weekdayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-    /// Splits the part of `segment` inside `interval` at each hour, reporting
-    /// the weekday (Mon = 0) and 4-hour block each piece falls in.
-    private static func forEachHour(of segment: ListeningSegment, in interval: DateInterval, calendar: Calendar,
-                                    _ body: (_ day: Int, _ column: Int, _ seconds: TimeInterval) -> Void) {
-        var time = max(segment.start, interval.start)
-        let end = min(segment.end, interval.end)
-        let topOfHour = DateComponents(minute: 0, second: 0)
-        while time < end {
-            let next = calendar.nextDate(after: time, matching: topOfHour, matchingPolicy: .nextTime) ?? end
-            let parts = calendar.dateComponents([.weekday, .hour], from: time)
-            let day = ((parts.weekday ?? 2) + 5) % 7
-            body(day, (parts.hour ?? 0) / 4, min(next, end).timeIntervalSince(time))
-            time = next
-        }
     }
 }
 

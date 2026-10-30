@@ -54,8 +54,6 @@ struct ListeningStatisticsView: View {
                     StatTile(value: stats.songsLiked.formatted(), label: stats.songsLiked == 1 ? "Song liked" : "Songs liked")
                 }
 
-                WhenYouListenCard(stats: stats)
-
                 if !stats.topShows.isEmpty {
                     TopShowsCard(shows: stats.topShows, series: series(for:))
                 }
@@ -351,114 +349,6 @@ private struct StatTile: View {
         }
         .statsCard()
         .accessibilityElement(children: .combine)
-    }
-}
-
-// MARK: - When you listen
-
-private struct WhenYouListenCard: View {
-    let stats: ListeningStats
-    @Environment(\.accentChoice) private var accent
-
-    @ScaledMetric(relativeTo: .footnote) private var dayLabelWidth: CGFloat = 34
-
-    private var strongest: TimeInterval { stats.heatmap.flatMap { $0 }.max() ?? 0 }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            CardHeader("When you listen") {
-                Text("by day and time")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            // Labels sit outside the chart so the cells can fill the card edge to edge.
-            VStack(spacing: 8) {
-                HStack(spacing: 10) {
-                    Color.clear.frame(width: dayLabelWidth, height: 1)
-                    HStack(spacing: 0) {
-                        ForEach(ListeningStats.heatmapColumns, id: \.self) { label in
-                            Text(label).frame(maxWidth: .infinity)
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-                HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(ListeningStats.heatmapRows, id: \.self) { label in
-                            Text(label).frame(maxHeight: .infinity)
-                        }
-                    }
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(width: dayLabelWidth, alignment: .leading)
-
-                    Chart {
-                        ForEach(Array(ListeningStats.heatmapRows.enumerated()), id: \.offset) { day, dayLabel in
-                            ForEach(Array(ListeningStats.heatmapColumns.enumerated()), id: \.offset) { column, timeLabel in
-                                RectangleMark(
-                                    x: .value("Time", timeLabel),
-                                    y: .value("Day", dayLabel),
-                                    width: .ratio(0.88),
-                                    height: .ratio(0.86)
-                                )
-                                .foregroundStyle(color(level: level(stats.heatmap[day][column])))
-                                .cornerRadius(7, style: .continuous)
-                            }
-                        }
-                    }
-                    .chartXScale(domain: ListeningStats.heatmapColumns)
-                    .chartYScale(domain: ListeningStats.heatmapRows)
-                    .chartXAxis(.hidden)
-                    .chartYAxis(.hidden)
-                }
-                .frame(height: 7 * 42)
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Listening by day and time")
-            .accessibilityValue(summary ?? "No listening yet")
-
-            HStack(spacing: 6) {
-                Spacer()
-                Text("Less")
-                ForEach(0..<5, id: \.self) { level in
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .fill(color(level: level))
-                        .frame(width: 14, height: 14)
-                }
-                Text("More")
-            }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .accessibilityHidden(true)
-        }
-        .statsCard()
-    }
-
-    private func level(_ seconds: TimeInterval) -> Int {
-        guard seconds > 0, strongest > 0 else { return 0 }
-        return min(4, max(1, Int((seconds / strongest * 4).rounded(.up))))
-    }
-
-    private func color(level: Int) -> Color {
-        switch level {
-        case 0: Color(.tertiarySystemFill)
-        case 1: accent.color.opacity(0.3)
-        case 2: accent.color.opacity(0.5)
-        case 3: accent.color.opacity(0.75)
-        default: accent.color
-        }
-    }
-
-    private static let blockNames = ["late nights", "early mornings", "mornings", "middays", "afternoons", "evenings"]
-    private static let blockRanges = ["12–4 am", "4–8 am", "8 am–12 pm", "12–4 pm", "4–8 pm", "8 pm–12 am"]
-
-    private var summary: String? {
-        guard let peak = stats.peak else { return nil }
-        let block = Self.blockNames[peak.column]
-        let when = peak.days.map { "\($0) \(block)" } ?? block.prefix(1).uppercased() + block.dropFirst()
-        return "\(when), \(Self.blockRanges[peak.column]), are your peak"
     }
 }
 
