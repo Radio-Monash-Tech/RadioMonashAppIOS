@@ -26,7 +26,7 @@ struct LiveRadioView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    ConnectionQualityBadge(connectivity: model.connectivity)
+                    ConnectionQualityBadge(connectivity: badgeConnectivity)
                         .fixedSize()
                 }
                 .hidingSharedBackground()
@@ -54,6 +54,12 @@ struct LiveRadioView: View {
             }
             .navigationDestination(for: LiveRoute.self) { destination(for: $0) }
         }
+    }
+
+    // The metadata can still load when the stream itself can't be reached.
+    private var badgeConnectivity: Connectivity {
+        if case .failed = model.state { return .offline }
+        return model.connectivity
     }
 
     private var playerSection: some View {
@@ -174,7 +180,7 @@ struct LiveRadioView: View {
     }
 
     private var metadata: some View {
-        MetadataDisplay(state: model.state, title: model.displayTitle, artist: model.displayArtist, onRetry: model.retry)
+        MetadataDisplay(title: model.displayTitle, artist: model.displayArtist)
     }
 
     private var controls: some View {

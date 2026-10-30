@@ -1,6 +1,6 @@
 import Foundation
 
-// Play, pause and retry.
+// Play and pause.
 extension RadioPlayerModel {
     func togglePlayback() {
         switch state {
@@ -15,10 +15,6 @@ extension RadioPlayerModel {
 
     func play() {
         stream.play()
-    }
-
-    func retry() {
-        play()
     }
 
     func stop() {

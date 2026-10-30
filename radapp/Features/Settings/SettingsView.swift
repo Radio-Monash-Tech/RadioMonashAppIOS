@@ -144,6 +144,7 @@ struct SettingsView: View {
             }
 
             Section {
+                NavigationLink("About Radio Monash") { AboutView() }
             } footer: {
                 VStack(spacing: 2) {
                     Text("RADIO MONASH").font(.caption.weight(.semibold)).kerning(1.5)

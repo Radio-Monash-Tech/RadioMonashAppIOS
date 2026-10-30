@@ -45,51 +45,22 @@ struct GlowingArtwork: View {
     }
 }
 
+// A failed stream shows only in the OFFLINE badge; the play button retries.
 struct MetadataDisplay: View {
-    let state: StreamState
     let title: String
     let artist: String?
-    let onRetry: () -> Void
 
     var body: some View {
-        Group {
-            if case .failed(let message) = state {
-                errorState(message)
-            } else {
-                VStack(spacing: 12) {
-                    MarqueeText(title, font: .title2.bold(), alignment: .center)
-                        .foregroundStyle(.primary)
-                        .animation(.default, value: title)
-                    if let artist {
-                        MarqueeText(artist, font: .body, alignment: .center)
-                            .foregroundStyle(.secondary)
-                            .animation(.default, value: artist)
-                    }
-                }
+        VStack(spacing: 12) {
+            MarqueeText(title, font: .title2.bold(), alignment: .center)
+                .foregroundStyle(.primary)
+                .animation(.default, value: title)
+            if let artist {
+                MarqueeText(artist, font: .body, alignment: .center)
+                    .foregroundStyle(.secondary)
+                    .animation(.default, value: artist)
             }
         }
         .padding(.horizontal, 32)
-    }
-
-    private func errorState(_ message: String) -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 40))
-                .foregroundStyle(PlayerPalette.error)
-            Text(message)
-                .foregroundStyle(.primary)
-                .multilineTextAlignment(.center)
-            Button(action: onRetry) {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.clockwise")
-                    Text("Retry").fontWeight(.semibold)
-                }
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 20)
-                .frame(height: 48)
-                .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 24))
-            }
-            .buttonStyle(.plain)
-        }
     }
 }
