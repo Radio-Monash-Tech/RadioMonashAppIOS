@@ -3,6 +3,8 @@ import SwiftUI
 // about radio monash: intro, features, contact and acknowledgement
 struct AboutView: View {
     @Environment(\.openURL) private var openURL
+    // the accent colour picked in settings
+    @Environment(\.accentChoice) private var accent
 
     // each tab and what it does
     private let whatWeDo: [(String, String)] = [
@@ -30,15 +32,14 @@ struct AboutView: View {
             }
         }
         .ignoresSafeArea(edges: .top)
-        .background(Color.black)
+        // follows light or dark mode
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
-        // always dark, to match the logo
-        .preferredColorScheme(.dark)
     }
 
-    // the station logo fading into black
+    // the station logo fading into the background
     private var hero: some View {
         ZStack(alignment: .bottomLeading) {
             Image("StationLogo")
@@ -52,8 +53,8 @@ struct AboutView: View {
             LinearGradient(stops: [
                 .init(color: .black.opacity(0.35), location: 0),
                 .init(color: .clear, location: 0.3),
-                .init(color: .black.opacity(0.55), location: 0.7),
-                .init(color: .black, location: 1)
+                .init(color: Color(.systemGroupedBackground).opacity(0.6), location: 0.7),
+                .init(color: Color(.systemGroupedBackground), location: 1)
             ], startPoint: .top, endPoint: .bottom)
         }
         .frame(height: 330)
@@ -65,11 +66,11 @@ struct AboutView: View {
             Text("SINCE 1972")
                 .font(.system(size: 10.5, weight: .bold))
                 .kerning(1)
-                .foregroundStyle(Color.radPinkText)
+                .foregroundStyle(accent.color)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Color.radPink.opacity(0.18), in: Capsule())
-                .overlay(Capsule().stroke(Color.radPink.opacity(0.5), lineWidth: 1))
+                .background(accent.color.opacity(0.18), in: Capsule())
+                .overlay(Capsule().stroke(accent.color.opacity(0.5), lineWidth: 1))
 
             Text("About Radapp")
                 .font(.largeTitle.bold())
@@ -77,12 +78,12 @@ struct AboutView: View {
 
             Text("The official app of Radio Monash, independent student radio from the Clayton campus of Monash University.")
                 .font(.body)
-                .foregroundStyle(.white.opacity(0.75))
+                .foregroundStyle(.secondary)
                 .padding(.top, 8)
 
             Text("Radapp puts the station in your pocket. Listen live, follow the shows you love and read the latest from our Journalism Director, wherever you are. Radio Monash has been on air in various guises since 1972, championing the Melbourne music scene and the students who make it.")
                 .font(.callout)
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(.primary.opacity(0.85))
                 .lineSpacing(3)
                 .padding(.top, 20)
 
@@ -92,10 +93,10 @@ struct AboutView: View {
                     Text("Visit radiomonash.online")
                     Image(systemName: "arrow.up.right")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.secondary)
                 }
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, minHeight: 48)
                 .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
             }
@@ -112,14 +113,14 @@ struct AboutView: View {
             ForEach(whatWeDo, id: \.0) { title, detail in
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Circle()
-                        .fill(Color.radPink)
+                        .fill(accent.color)
                         .frame(width: 6, height: 6)
                         // sits level with the text
                         .alignmentGuide(.firstTextBaseline) { dimensions in
                             dimensions[.bottom] + 4
                         }
-                    (Text(title).fontWeight(.semibold).foregroundStyle(.white)
-                     + Text(" : " + detail).foregroundStyle(.white.opacity(0.85)))
+                    (Text(title).fontWeight(.semibold).foregroundStyle(.primary)
+                     + Text(" : " + detail).foregroundStyle(.primary.opacity(0.85)))
                         .font(.callout)
                 }
                 .accessibilityElement(children: .combine)
@@ -134,7 +135,7 @@ struct AboutView: View {
             Divider().padding(.leading, 14)
             contactRow("Phone", "9905 8257", "tel:0399058257")
         }
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     // tapping opens mail or the phone app
@@ -143,9 +144,9 @@ struct AboutView: View {
             openURL(URL(string: link)!)
         } label: {
             HStack {
-                Text(label).foregroundStyle(.white)
+                Text(label).foregroundStyle(.primary)
                 Spacer()
-                Text(value).foregroundStyle(Color.radPinkText)
+                Text(value).foregroundStyle(accent.color)
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 46)
@@ -157,12 +158,12 @@ struct AboutView: View {
             Text("Acknowledgement of Country").font(.subheadline.weight(.semibold))
             Text("Radio Monash recognises the stolen land of the peoples of the Kulin Nation, where our studios are located and we conduct our activities. We pay our respects to Elders past, present and emerging. Sovereignty was never ceded.")
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.78))
+                .foregroundStyle(.primary.opacity(0.8))
                 .lineSpacing(2)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var footer: some View {
@@ -189,14 +190,16 @@ struct AboutView: View {
     }
 }
 
-// the station's pink, and a lighter one readable as text
-private extension Color {
-    static let radPink = Color(red: 1.0, green: 0.216, blue: 0.373)
-    static let radPinkText = Color(red: 1.0, green: 0.42, blue: 0.525)
-}
-
-#Preview {
+#Preview("Dark") {
     NavigationStack {
         AboutView()
     }
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Light") {
+    NavigationStack {
+        AboutView()
+    }
+    .preferredColorScheme(.light)
 }

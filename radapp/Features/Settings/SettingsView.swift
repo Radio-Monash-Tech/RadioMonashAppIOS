@@ -171,7 +171,7 @@ struct SettingsView: View {
             }
 
             Section {
-                NavigationLink("About Radio Monash") {
+                NavigationLink("About Radapp") {
                     AboutView()
                 }
             } footer: {
