@@ -1,23 +1,19 @@
-//
-//  RadappApp.swift
-//  radapp
-//
-//  Created by Studio on 16/9/2026.
-//
-
 import SwiftUI
 import SwiftData
 import UserNotifications
 
 @main
 struct radappApp: App {
-
+    
+    // create 3 temporary storage
     @StateObject private var player: RadioPlayerModel
     @StateObject private var schedule: ScheduleStore
     @StateObject private var journalism = JournalismStore()
     private let container: ModelContainer
-
+    
+    // initialize the app
     init() {
+        // initialize database
         let container: ModelContainer
         do {
             container = try ModelContainer(for: FavouriteTrack.self, SavedArticle.self, ListeningSegment.self)
@@ -27,8 +23,8 @@ struct radappApp: App {
         self.container = container
         let schedule = ScheduleStore()
         _schedule = StateObject(wrappedValue: schedule)
-        // Created now rather than when the first view appears, so a widget
-        // button that launches the app in the background reaches it.
+        
+        // Created now, so a widget button that launches the app in the background reaches it.
         let player = RadioPlayerModel(modelContext: container.mainContext, schedule: schedule)
         _player = StateObject(wrappedValue: player)
         UNUserNotificationCenter.current().delegate = ForegroundNotificationPresenter.shared

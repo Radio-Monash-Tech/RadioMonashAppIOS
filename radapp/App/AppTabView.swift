@@ -1,9 +1,10 @@
 //
-//  AppTabView.swift
+//  AppTab.swift
 //  radapp
 //
-//  Created by Studio on 16/9/2026.
+//  Created by Pang on 1/11/2026.
 //
+
 
 import SwiftUI
 import SwiftData
@@ -16,6 +17,8 @@ struct AppTabView: View {
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
     @EnvironmentObject private var journalism: JournalismStore
+    
+    // read and write UserDefaults
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @AppStorage(ContrastPreference.storageKey) private var increaseContrast = false
     @AppStorage(AccentChoice.storageKey, store: AccentChoice.store) private var accent: AccentChoice = .blue
@@ -41,8 +44,8 @@ struct AppTabView: View {
             Tab("Library", systemImage: "books.vertical", value: .library) {
                 LibraryView().modifier(tabContent)
             }
-            // In landscape, iOS pins the other tabs left and a search-role tab
-            // right; as an ordinary tab, Search joins one centred bar instead.
+            
+            // In landscape, iOS pins the other tabs left and a search-role tab right
             if isLandscape {
                 Tab("Search", systemImage: "magnifyingglass", value: .search) {
                     SearchView().modifier(tabContent)
@@ -54,19 +57,37 @@ struct AppTabView: View {
             }
         }
         .modifier(MiniPlayerAccessory(isEnabled: selection != .live) { selection = .live })
+        
+        // dark or light mode
         .preferredColorScheme(appearance.colorScheme)
+        
+        // contrast
         .increasedContrast(increaseContrast)
         .textSizeOffset(textSizeOffset)
+        
+        // set the color theme
         .tint(accent.color)
         .environment(\.accentChoice, accent)
+        
+        // applies color filter to the whole app
         .colourVisionFilter(colourVision)
+        
+        // run async code when the view appears, cancel if the view disappears
         .task {
             player.prepareSession()
             async let scheduleLoad: Void = schedule.loadIfNeeded()
             async let articlesLoad: Void = journalism.loadIfNeeded()
             _ = await (scheduleLoad, articlesLoad)
         }
-        .task(id: ReminderInputs(shows: schedule.shows, followed: followed.rawValue, isEnabled: showReminders)) {
+        
+        // runs when the id has been chanaged
+        .task(id: ReminderInputs(shows:
+                                    schedule.shows,
+                                 followed:
+                                    followed.rawValue,
+                                 isEnabled:
+                                    showReminders)
+        ) {
             await ShowReminderScheduler.sync(shows: schedule.shows, followed: followed, isEnabled: showReminders)
             // The widget lists upcoming shows and which are followed.
             player.refreshSystemPlayers()
@@ -78,8 +99,7 @@ struct AppTabView: View {
     }
 }
 
-// What every tab's screen needs. On iOS 26 the TabView's tint only colours
-// the tab bar, not the screens inside it, so each tab is tinted again here.
+// On iOS 26 the TabView's tint only colours the tab bar, so each tab is tinted again here.
 private struct TabContent: ViewModifier {
     let accent: Color
     let showsMiniPlayer: Bool
@@ -92,7 +112,8 @@ private struct TabContent: ViewModifier {
     }
 }
 
-// Everything the reminder schedule depends on; a change to any of them reschedules.
+// everything the reminder schedule depends on; a change to any of them reschedules.
+// equatable being used to compare the old and the new value of the id
 private struct ReminderInputs: Equatable {
     let shows: [ScheduledShow]
     let followed: String
@@ -118,7 +139,7 @@ private struct MiniPlayerAccessory: ViewModifier {
     }
 }
 
-// Before iOS 26 there's no tab bar accessory, so each tab pins the mini player just above the tab bar.
+// before iOS 26 there's no tab bar accessory, so each tab pins the mini player just above the tab bar.
 private struct LegacyMiniPlayerInset: ViewModifier {
     let isEnabled: Bool
     let onOpen: () -> Void
