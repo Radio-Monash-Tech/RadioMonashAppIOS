@@ -1,17 +1,22 @@
 import SwiftUI
 import UIKit
 
-/// A full-screen photo from an article: pinch or double-tap to zoom, tap to
-/// show or hide the close button. Shows the cached copy straight away, then
-/// swaps in a sharper one.
+// show full image from an article
 struct ImageViewer: View {
+
+    // use by the journalism article screen when user tap a photo
     let url: URL
 
+    // close what is showing
     @Environment(\.dismiss) private var dismiss
+
+    // the sharp 2500px image once downloaded
     @State private var fullImage: UIImage?
     @State private var loadFailed = false
+    // close button and status bar visible
     @State private var showsControls = true
 
+    // sharp image if loaded, otherwise the cached 1000px one
     private var image: UIImage? {
         fullImage ?? ArtworkCache.shared.image(for: url.squarespaceSized(1000))
     }
@@ -20,8 +25,11 @@ struct ImageViewer: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let image {
+                // single tap shows or hides the close button
                 ZoomableImageView(image: image) {
-                    withAnimation(.easeInOut(duration: 0.2)) { showsControls.toggle() }
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showsControls.toggle()
+                    }
                 }
                 .ignoresSafeArea()
             } else if loadFailed {
@@ -32,9 +40,13 @@ struct ImageViewer: View {
                 ProgressView()
             }
         }
+        // close button in the top right
         .overlay(alignment: .topTrailing) {
             if showsControls {
-                Button { dismiss() } label: {
+                Button {
+                    dismiss()
+                } label: {
+                    // icon only, voiceover still reads "Close"
                     Label("Close", systemImage: "xmark")
                         .labelStyle(.iconOnly)
                         .font(.body.weight(.semibold))
@@ -45,9 +57,11 @@ struct ImageViewer: View {
                 .transition(.opacity)
             }
         }
+        // hide the clock and home bar with the controls
         .statusBarHidden(!showsControls)
         .persistentSystemOverlays(showsControls ? .automatic : .hidden)
         .preferredColorScheme(.dark)
+        // try the sharp image, fall back to the 1000px one
         .task {
             if let loaded = await ArtworkCache.shared.load(url.squarespaceSized(2500)) {
                 fullImage = loaded
@@ -59,6 +73,7 @@ struct ImageViewer: View {
     }
 }
 
+// glass button on ios 26, frosted circle before that
 private struct CloseButtonStyle: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
@@ -71,12 +86,16 @@ private struct CloseButtonStyle: ViewModifier {
     }
 }
 
+// home-made frosted circle button for older ios
 private struct MaterialCircleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            // apple's minimum tap target
             .frame(width: 44, height: 44)
             .background(.ultraThinMaterial, in: Circle())
+            // the whole circle is tappable
             .contentShape(Circle())
+            // dim while pressed
             .opacity(configuration.isPressed ? 0.6 : 1)
     }
 }

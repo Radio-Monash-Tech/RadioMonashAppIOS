@@ -1,19 +1,15 @@
-//
-//  AppTab.swift
-//  radapp
-//
-//  Created by Pang on 1/11/2026.
-//
-
-
 import SwiftUI
 import SwiftData
 
+
+// hashable lets swiftui compare values and see which tab is selected
 enum AppTab: Hashable {
     case live, schedule, journalism, library, search
 }
 
+// the main screen: tab bar, the five tabs and the mini player
 struct AppTabView: View {
+    // shared stores injected by RadappApp
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
     @EnvironmentObject private var journalism: JournalismStore
@@ -26,7 +22,11 @@ struct AppTabView: View {
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @AppStorage(TextSizePreference.storageKey) private var textSizeOffset = 0
+
+    // which tab is open, always starts on live
     @State private var selection: AppTab = .live
+
+    // true when a phone is turned sideways
     @Environment(\.isLandscapePhone) private var isLandscape
     
     // increase or adjust system-wide
@@ -56,7 +56,10 @@ struct AppTabView: View {
                 }
             }
         }
-        .modifier(MiniPlayerAccessory(isEnabled: selection != .live) { selection = .live })
+        // mini player above the tab bar, hidden on the live tab
+        .modifier(MiniPlayerAccessory(isEnabled: selection != .live) {
+            selection = .live
+        })
         
         // dark or light mode
         .preferredColorScheme(appearance.colorScheme)
@@ -94,8 +97,11 @@ struct AppTabView: View {
         }
     }
 
+    // the same styling for every tab
     private var tabContent: TabContent {
-        TabContent(accent: accent.color, showsMiniPlayer: selection != .live) { selection = .live }
+        TabContent(accent: accent.color, showsMiniPlayer: selection != .live) {
+            selection = .live
+        }
     }
 }
 
@@ -120,16 +126,19 @@ private struct ReminderInputs: Equatable {
     let isEnabled: Bool
 }
 
+// mini player for ios 26 and later
 private struct MiniPlayerAccessory: ViewModifier {
     let isEnabled: Bool
     let onOpen: () -> Void
 
     func body(content: Content) -> some View {
         if #available(iOS 26.1, *) {
+            // 26.1 can hide the accessory
             content.tabViewBottomAccessory(isEnabled: isEnabled) {
                 MiniPlayer(onOpen: onOpen)
             }
         } else if #available(iOS 26, *) {
+            // 26.0 always shows it
             content.tabViewBottomAccessory {
                 MiniPlayer(onOpen: onOpen)
             }
@@ -148,6 +157,7 @@ private struct LegacyMiniPlayerInset: ViewModifier {
         if #available(iOS 26, *) {
             content
         } else {
+            // pins to the bottom and shrinks the scroll area so nothing hides behind it
             content.safeAreaInset(edge: .bottom, spacing: 0) {
                 if isEnabled {
                     MiniPlayer(onOpen: onOpen)
@@ -162,6 +172,7 @@ private struct LegacyMiniPlayerInset: ViewModifier {
     }
 }
 
+// xcode canvas only, uses an in-memory database
 #Preview {
     AppTabView()
         .environmentObject(RadioPlayerModel())
