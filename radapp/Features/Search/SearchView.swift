@@ -1,5 +1,6 @@
 import SwiftUI
 
+// searches shows, articles and recently played tracks
 struct SearchView: View {
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
@@ -7,26 +8,34 @@ struct SearchView: View {
     @State private var query = ""
     @Environment(\.isLandscapePhone) private var isLandscape
 
-    private var trimmed: String { query.trimmingCharacters(in: .whitespaces) }
+    // the search without spaces at the ends
+    private var trimmed: String {
+        query.trimmingCharacters(in: .whitespaces)
+    }
 
+    // shows whose title or a host matches
     private var shows: [ShowSeries] {
-        schedule.series.filter {
-            $0.title.localizedCaseInsensitiveContains(trimmed)
-                || $0.hosts.contains { $0.localizedCaseInsensitiveContains(trimmed) }
+        schedule.series.filter { series in
+            series.title.localizedCaseInsensitiveContains(trimmed)
+                || series.hosts.contains { host in
+                    host.localizedCaseInsensitiveContains(trimmed)
+                }
         }
     }
 
+    // articles whose title or author matches
     private var articles: [Article] {
-        journalism.articles.filter {
-            $0.title.localizedCaseInsensitiveContains(trimmed)
-                || $0.author.localizedCaseInsensitiveContains(trimmed)
+        journalism.articles.filter { article in
+            article.title.localizedCaseInsensitiveContains(trimmed)
+                || article.author.localizedCaseInsensitiveContains(trimmed)
         }
     }
 
+    // played songs whose title or artist matches
     private var tracks: [PlayedTrack] {
-        player.history.filter {
-            $0.title.localizedCaseInsensitiveContains(trimmed)
-                || $0.artist.localizedCaseInsensitiveContains(trimmed)
+        player.history.filter { track in
+            track.title.localizedCaseInsensitiveContains(trimmed)
+                || track.artist.localizedCaseInsensitiveContains(trimmed)
         }
     }
 
@@ -46,13 +55,18 @@ struct SearchView: View {
                 }
             }
             .navigationTitle("Search")
+            // load both at the same time
             .task {
                 async let scheduleLoad: Void = schedule.loadIfNeeded()
                 async let articlesLoad: Void = journalism.loadIfNeeded()
                 _ = await (scheduleLoad, articlesLoad)
             }
-            .navigationDestination(for: ShowSeries.self) { ShowDetailView(series: $0) }
-            .navigationDestination(for: Article.self) { ArticleView(article: $0) }
+            .navigationDestination(for: ShowSeries.self) { series in
+                ShowDetailView(series: series)
+            }
+            .navigationDestination(for: Article.self) { article in
+                ArticleView(article: article)
+            }
         }
         .searchable(text: $query, prompt: "Shows, articles, tracks")
     }
@@ -60,17 +74,35 @@ struct SearchView: View {
     @ViewBuilder
     private var results: some View {
         if isLandscape {
-            // Each kind of result gets its own scrolling column.
+            // each kind of result gets its own column
             HStack(spacing: 0) {
-                if !shows.isEmpty { List { showsSection } }
-                if !articles.isEmpty { List { articlesSection } }
-                if !tracks.isEmpty { List { tracksSection } }
+                if !shows.isEmpty {
+                    List {
+                        showsSection
+                    }
+                }
+                if !articles.isEmpty {
+                    List {
+                        articlesSection
+                    }
+                }
+                if !tracks.isEmpty {
+                    List {
+                        tracksSection
+                    }
+                }
             }
         } else {
             List {
-                if !shows.isEmpty { showsSection }
-                if !articles.isEmpty { articlesSection }
-                if !tracks.isEmpty { tracksSection }
+                if !shows.isEmpty {
+                    showsSection
+                }
+                if !articles.isEmpty {
+                    articlesSection
+                }
+                if !tracks.isEmpty {
+                    tracksSection
+                }
             }
         }
     }

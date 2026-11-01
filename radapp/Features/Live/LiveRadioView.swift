@@ -1,14 +1,19 @@
 import SwiftUI
 import SwiftData
 
-enum LiveRoute: Hashable { case history, transcript }
+// screens the live tab can push
+enum LiveRoute: Hashable {
+    case history, transcript
+}
 
+// the live tab: artwork, titles, controls and live captions
 struct LiveRadioView: View {
 
     @EnvironmentObject private var model: RadioPlayerModel
     @State private var showingPlatformSheet = false
     @State private var showingRecent = false
     @State private var path = NavigationPath()
+    // bumped to play the heart animation
     @State private var likeBurstTrigger = 0
     @State private var showingCaptionSetup = false
     @Environment(\.isLandscapePhone) private var isLandscape
@@ -46,19 +51,24 @@ struct LiveRadioView: View {
                     .colourVisionFilter()
             }
             .sheet(isPresented: $showingRecent) {
+                // "see all" closes the sheet and opens the full history
                 RecentlyPlayedSheet {
                     showingRecent = false
                     path.append(LiveRoute.history)
                 }
                 .colourVisionFilter()
             }
-            .navigationDestination(for: LiveRoute.self) { destination(for: $0) }
+            .navigationDestination(for: LiveRoute.self) { route in
+                destination(for: route)
+            }
         }
     }
 
-    // The metadata can still load when the stream itself can't be reached.
+    // offline when the stream failed, even if song info still loads
     private var badgeConnectivity: Connectivity {
-        if case .failed = model.state { return .offline }
+        if case .failed = model.state {
+            return .offline
+        }
         return model.connectivity
     }
 
@@ -74,7 +84,7 @@ struct LiveRadioView: View {
         .animation(.snappy, value: showsCaptions)
     }
 
-    // While captions are on they take the place of the artwork, titles and volume.
+    // captions replace the artwork, titles and volume while they're on
     private var portraitPlayer: some View {
         VStack(spacing: 0) {
             if showsCaptions {
@@ -90,7 +100,7 @@ struct LiveRadioView: View {
         }
     }
 
-    // Artwork (or captions) on the left, titles and controls on the right.
+    // artwork or captions on the left, titles and controls on the right
     private var landscapePlayer: some View {
         HStack(spacing: 0) {
             if showsCaptions {
@@ -100,7 +110,9 @@ struct LiveRadioView: View {
             }
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
-                if !showsCaptions { metadata }
+                if !showsCaptions {
+                    metadata
+                }
                 Spacer(minLength: 0)
                 controls
             }
@@ -112,16 +124,22 @@ struct LiveRadioView: View {
             url: model.nowPlaying.artworkURL,
             showsStationLogo: model.showsStationLogo,
             isBusy: model.isBusy,
-            // Nothing to look up until RadioCult names the song.
-            onDoubleTap: { if model.isIdentifiedTrack { showingPlatformSheet = true } }
+            // double tap opens the streaming links, once the song is known
+            onDoubleTap: {
+                if model.isIdentifiedTrack {
+                    showingPlatformSheet = true
+                }
+            }
         )
     }
 
-    // MARK: Captions
+    private var captions: CaptionCoordinator {
+        model.captions
+    }
 
-    private var captions: CaptionCoordinator { model.captions }
-
-    private var showsCaptions: Bool { captions.isSupported && captions.isEnabled }
+    private var showsCaptions: Bool {
+        captions.isSupported && captions.isEnabled
+    }
 
     private var captionsView: some View {
         LiveCaptionsView(
@@ -134,6 +152,7 @@ struct LiveRadioView: View {
         .transition(.opacity)
     }
 
+    // turns captions on or off, or explains why it can't yet
     private func toggleCaptions() {
         switch captions.availability {
         case .unsupported(let reason):
@@ -151,18 +170,28 @@ struct LiveRadioView: View {
         }
     }
 
-    /// The Aa menu: caption size, lyrics on or off, and the transcript.
+    // the Aa menu: caption size, music captions and the transcript
     private var captionOptions: some View {
         Menu {
             Picker("Caption Size", selection: Binding(
-                get: { captions.textSize },
-                set: { captions.textSize = $0 }
+                get: {
+                    captions.textSize
+                },
+                set: { size in
+                    captions.textSize = size
+                }
             )) {
-                ForEach(CaptionTextSize.allCases) { Text($0.label).tag($0) }
+                ForEach(CaptionTextSize.allCases) { size in
+                    Text(size.label).tag(size)
+                }
             }
             Toggle(isOn: Binding(
-                get: { captions.captionsMusic },
-                set: { captions.captionsMusic = $0 }
+                get: {
+                    captions.captionsMusic
+                },
+                set: { isOn in
+                    captions.captionsMusic = isOn
+                }
             )) {
                 Label("Caption Music", systemImage: "music.note")
             }
@@ -183,10 +212,13 @@ struct LiveRadioView: View {
         MetadataDisplay(title: model.displayTitle, artist: model.displayArtist)
     }
 
+    // volume, sleep timer, play, like and the utility row
     private var controls: some View {
         VStack(spacing: 20) {
             if !showsCaptions {
-                VolumeControlBar(isMuted: model.isMuted) { model.isMuted = $0 }
+                VolumeControlBar(isMuted: model.isMuted) { isMuted in
+                    model.isMuted = isMuted
+                }
             }
             HStack(spacing: 16) {
                 SleepTimerButton(
@@ -197,7 +229,10 @@ struct LiveRadioView: View {
                 PlaybackFAB(isPlaying: model.state == .playing, action: model.togglePlayback)
                 FavoriteToggleButton(isFavorite: model.isCurrentTrackLiked) {
                     model.toggleLike()
-                    if model.isCurrentTrackLiked { likeBurstTrigger += 1 }
+                    // hearts only when liking, not unliking
+                    if model.isCurrentTrackLiked {
+                        likeBurstTrigger += 1
+                    }
                 }
                 .disabled(!model.canLikeCurrentTrack)
                 .opacity(model.canLikeCurrentTrack ? 1 : 0.4)
@@ -207,15 +242,15 @@ struct LiveRadioView: View {
                 captionsAvailable: captions.isSupported,
                 showingRecent: showingRecent,
                 onCaptions: toggleCaptions,
-                onRecent: { showingRecent = true }
+                onRecent: {
+                    showingRecent = true
+                }
             )
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 20)
         .background(LinearGradient(colors: [.clear, Color(.systemBackground).opacity(0.3)], startPoint: .top, endPoint: .bottom))
     }
-
-    // MARK: Destinations
 
     @ViewBuilder
     private func destination(for route: LiveRoute) -> some View {
@@ -236,7 +271,7 @@ struct LiveRadioView: View {
 }
 
 private extension ToolbarContent {
-    // iOS 26 puts toolbar items on a shared glass background; earlier versions have none to hide.
+    // ios 26 puts toolbar items on glass; hide it, older ios has none
     @ToolbarContentBuilder
     func hidingSharedBackground() -> some ToolbarContent {
         if #available(iOS 26, *) {

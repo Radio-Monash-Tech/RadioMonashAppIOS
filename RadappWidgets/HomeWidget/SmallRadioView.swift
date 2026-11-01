@@ -1,10 +1,12 @@
 import SwiftUI
 import WidgetKit
 
-/// The small widget: the cover fills it, with the title over a scrim.
+// the small widget: the cover fills it, with the title over a dark fade
 struct SmallRadioView: View {
     let entry: RadioEntry
-    private var s: RadioWidgetSnapshot { entry.snapshot }
+    private var s: RadioWidgetSnapshot {
+        entry.snapshot
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -14,7 +16,9 @@ struct SmallRadioView: View {
                     .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
             }
             Spacer(minLength: 0)
-            if s.isOnAir { LiveLabel(onImage: true) }
+            if s.isOnAir {
+                LiveLabel(onImage: true)
+            }
             Text(s.title)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
@@ -31,7 +35,7 @@ struct SmallRadioView: View {
         .containerBackground(for: .widget) {
             ZStack(alignment: .bottom) {
                 Cover(image: entry.artwork)
-                // Scrim keeps white text readable on any cover.
+                // keeps white text readable on any cover
                 LinearGradient(
                     stops: [
                         .init(color: .black.opacity(0), location: 0),
@@ -41,10 +45,13 @@ struct SmallRadioView: View {
                     startPoint: .top, endPoint: .bottom
                 )
                 .frame(maxHeight: .infinity, alignment: .bottom)
-                .containerRelativeFrame(.vertical) { height, _ in height * 0.62 }
+                // the bottom 62% of the widget
+                .containerRelativeFrame(.vertical) { height, _ in
+                    height * 0.62
+                }
             }
         }
-        // The text always sits on the cover.
+        // the text always sits on the cover
         .environment(\.colorScheme, .dark)
     }
 }

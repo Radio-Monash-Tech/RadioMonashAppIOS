@@ -1,5 +1,6 @@
 import SwiftUI
 
+// "Author · 3 Nov 2026" with a bookmark when saved
 struct ArticleByline: View {
     let article: Article
     var isSaved = false

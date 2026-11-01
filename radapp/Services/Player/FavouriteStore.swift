@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// Liked songs, kept in SwiftData.
+// liked songs in the database
 struct FavouriteStore {
     let context: ModelContext
 
@@ -9,6 +9,7 @@ struct FavouriteStore {
         favourite(key: FavouriteTrack.key(title: title, artist: artist)) != nil
     }
 
+    // likes it, or unlikes it if already liked
     func toggle(title: String, artist: String, artworkURL: URL?, showName: String?) {
         if let existing = favourite(key: FavouriteTrack.key(title: title, artist: artist)) {
             context.delete(existing)
@@ -23,8 +24,11 @@ struct FavouriteStore {
         try? context.save()
     }
 
+    // the liked song with this key, if any
     private func favourite(key: String) -> FavouriteTrack? {
-        var descriptor = FetchDescriptor<FavouriteTrack>(predicate: #Predicate { $0.key == key })
+        var descriptor = FetchDescriptor<FavouriteTrack>(predicate: #Predicate { track in
+            track.key == key
+        })
         descriptor.fetchLimit = 1
         return try? context.fetch(descriptor).first
     }

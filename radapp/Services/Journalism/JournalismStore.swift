@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+// the articles for the journalism tab, with paging and an offline copy
 @MainActor
 final class JournalismStore: ObservableObject {
     enum Phase: Equatable {
@@ -11,33 +12,43 @@ final class JournalismStore: ObservableObject {
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var isLoadingMore = false
     @Published private(set) var loadMoreFailed = false
-    /// The filter picked at the top of Journalism; `nil` is All.
+    // the topic picked at the top; nil is all
     @Published private(set) var topic: ArticleTopic?
-    /// When the shown articles were downloaded, set only while the latest
-    /// download failed and the saved copy is on screen instead.
+    // set only while showing the saved copy because loading failed
     @Published private(set) var offlineCopyDate: Date?
 
     private let client = SquarespaceClient.shared
+    // where the next page starts; nil when there are no more
     private var nextOffset: Int64?
     private var loadedAt: Date?
     private var cachedAt: Date?
+    // reload after 15 minutes
     private let staleAfter: TimeInterval = 15 * 60
 
-    var hasMore: Bool { nextOffset != nil }
+    var hasMore: Bool {
+        nextOffset != nil
+    }
 
     init() {
         showSavedCopy()
     }
 
+    // loads unless it was loaded in the last 15 minutes
     func loadIfNeeded() async {
-        if let loadedAt, Date().timeIntervalSince(loadedAt) < staleAfter { return }
-        guard phase != .loading else { return }
+        if let loadedAt, Date().timeIntervalSince(loadedAt) < staleAfter {
+            return
+        }
+        guard phase != .loading else {
+            return
+        }
         await load()
     }
 
-    /// Switches filter and loads its first page.
+    // switches topic and loads its first page
     func select(_ topic: ArticleTopic?) async {
-        guard topic != self.topic else { return }
+        guard topic != self.topic else {
+            return
+        }
         self.topic = topic
         nextOffset = nil
         offlineCopyDate = nil
@@ -45,25 +56,31 @@ final class JournalismStore: ObservableObject {
         await load()
     }
 
-    /// Puts the saved first page for the current filter on screen, if there is one.
+    // shows the saved first page for this topic, if there is one
     private func showSavedCopy() {
         let cached = OfflineCache.load([Article].self, named: cacheName(for: topic))
         articles = cached?.value ?? []
         cachedAt = cached?.savedAt
     }
 
-    /// One saved first page per filter: "articles-all", "articles-popCulture"…
+    // one saved first page per topic: "articles-all", "articles-popCulture" ...
     private func cacheName(for topic: ArticleTopic?) -> String {
-        "articles-" + (topic.map { "\($0)" } ?? "all")
+        guard let topic else {
+            return "articles-all"
+        }
+        return "articles-\(topic)"
     }
 
+    // the first page for the current topic
     func load() async {
         let topic = topic
         phase = .loading
         do {
             let page = try await client.articles(tag: topic?.siteTag)
-            // Another filter was picked while this one loaded.
-            guard topic == self.topic else { return }
+            // another topic was picked while this one loaded
+            guard topic == self.topic else {
+                return
+            }
             articles = page.articles
             nextOffset = page.nextOffset
             loadMoreFailed = false
@@ -73,11 +90,17 @@ final class JournalismStore: ObservableObject {
             phase = .loaded
             OfflineCache.save(page.articles, as: cacheName(for: topic))
         } catch {
-            guard topic == self.topic else { return }
+            guard topic == self.topic else {
+                return
+            }
             if Self.isCancellation(error) {
-                phase = articles.isEmpty ? .idle : .loaded
+                if articles.isEmpty {
+                    phase = .idle
+                } else {
+                    phase = .loaded
+                }
             } else if !articles.isEmpty {
-                // Keep showing the saved copy rather than an error.
+                // keep showing the saved copy rather than an error
                 offlineCopyDate = cachedAt
                 phase = .loaded
             } else {
@@ -86,16 +109,26 @@ final class JournalismStore: ObservableObject {
         }
     }
 
+    // the next page, added to the end
     func loadMore() async {
-        guard let nextOffset, !isLoadingMore, phase == .loaded else { return }
+        guard let nextOffset, !isLoadingMore, phase == .loaded else {
+            return
+        }
         let topic = topic
         isLoadingMore = true
-        defer { isLoadingMore = false }
+        defer {
+            isLoadingMore = false
+        }
         do {
             let page = try await client.articles(tag: topic?.siteTag, after: nextOffset)
-            guard topic == self.topic else { return }
+            guard topic == self.topic else {
+                return
+            }
+            // skip any already in the list
             let known = Set(articles.map(\.id))
-            articles += page.articles.filter { !known.contains($0.id) }
+            articles += page.articles.filter { article in
+                !known.contains(article.id)
+            }
             self.nextOffset = page.nextOffset
             loadMoreFailed = false
         } catch {
@@ -103,6 +136,7 @@ final class JournalismStore: ObservableObject {
         }
     }
 
+    // the load was cancelled, not failed
     private static func isCancellation(_ error: Error) -> Bool {
         error is CancellationError || (error as? URLError)?.code == .cancelled
     }

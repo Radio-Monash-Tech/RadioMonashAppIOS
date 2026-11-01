@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import UserNotifications
 
+// where the app starts
 @main
 struct radappApp: App {
     
@@ -30,6 +31,7 @@ struct radappApp: App {
         UNUserNotificationCenter.current().delegate = ForegroundNotificationPresenter.shared
     }
 
+    // hand the stores and database to every screen
     var body: some Scene {
         WindowGroup {
             AppTabView()

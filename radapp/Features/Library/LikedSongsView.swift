@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
 
+// every song the user hearted, newest first
 struct LikedSongsView: View {
     @EnvironmentObject private var player: RadioPlayerModel
     @Query(sort: \FavouriteTrack.savedAt, order: .reverse) private var tracks: [FavouriteTrack]
+    // the song being shared, opens the share sheet
     @State private var sharingTrack: ShareableTrack?
 
     var body: some View {
@@ -18,14 +20,14 @@ struct LikedSongsView: View {
                 List {
                     ForEach(tracks) { track in
                         LikedSongRow(track: track)
-                            // Custom swipe actions replace the one `onDelete` provides, so Delete is restated here.
+                            // custom swipe actions replace onDelete's, so delete is added back here
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
                                     player.unlike(track)
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
-                                
+
                                 // share song
                                 Button {
                                     sharingTrack = track.shareable
@@ -35,9 +37,11 @@ struct LikedSongsView: View {
                                 .tint(.orange)
                             }
                     }
-                    // Still drives the delete controls in Edit mode.
+                    // the delete buttons in edit mode
                     .onDelete { offsets in
-                        for index in offsets { player.unlike(tracks[index]) }
+                        for index in offsets {
+                            player.unlike(tracks[index])
+                        }
                     }
                 }
             }
@@ -45,16 +49,24 @@ struct LikedSongsView: View {
         .trackShareSheet(for: $sharingTrack)
         .navigationTitle("Liked Songs")
         .toolbar {
-            if !tracks.isEmpty { EditButton() }
+            if !tracks.isEmpty {
+                EditButton()
+            }
         }
     }
 }
 
+// cover, title, artist · show, and the date it was liked
 private struct LikedSongRow: View {
     let track: FavouriteTrack
 
+    // "Artist · Show", or just the artist if there was no show
     private var subtitle: String {
-        [track.artist, track.showName].compactMap { $0 }.joined(separator: " · ")
+        [track.artist, track.showName]
+            .compactMap { part in
+                part
+            }
+            .joined(separator: " · ")
     }
 
     var body: some View {
@@ -75,12 +87,15 @@ private struct LikedSongRow: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
+        // voiceover reads the row as one item
         .accessibilityElement(children: .combine)
     }
 }
 
 #Preview {
-    NavigationStack { LikedSongsView() }
-        .environmentObject(RadioPlayerModel())
-        .modelContainer(for: FavouriteTrack.self, inMemory: true)
+    NavigationStack {
+        LikedSongsView()
+    }
+    .environmentObject(RadioPlayerModel())
+    .modelContainer(for: FavouriteTrack.self, inMemory: true)
 }

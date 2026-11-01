@@ -1,5 +1,6 @@
 import SwiftUI
 
+// the big round play / pause button
 struct PlaybackFAB: View {
     let isPlaying: Bool
     let action: () -> Void
@@ -14,6 +15,7 @@ struct PlaybackFAB: View {
             }
             .frame(width: 72, height: 72)
             .shadow(color: .black.opacity(0.35), radius: 10, y: 6)
+            // shrinks a little while paused
             .scaleEffect(isPlaying ? 1 : 0.95)
         }
         .buttonStyle(.plain)
@@ -22,20 +24,24 @@ struct PlaybackFAB: View {
     }
 }
 
+// the heart button beside play
 struct FavoriteToggleButton: View {
     let isFavorite: Bool
     let action: () -> Void
     @Environment(\.colorScheme) private var colorScheme
 
     private var filledColor: Color {
-        colorScheme == .dark ? PlayerPalette.favoriteFilled : PlayerPalette.error
+        if colorScheme == .dark {
+            return PlayerPalette.favoriteFilled
+        }
+        return PlayerPalette.error
     }
 
     var body: some View {
         Button(action: action) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12).fill(.primary)
-                // Fixed like the other transport icons, so it never outgrows its 56pt box.
+                // fixed size so it never outgrows its 56pt box
                 Image(systemName: isFavorite ? "heart.fill" : "heart")
                     .font(.system(size: 17))
                     .foregroundStyle(isFavorite ? filledColor : Color(.systemBackground))
@@ -50,9 +56,10 @@ struct FavoriteToggleButton: View {
     }
 }
 
+// the alarm button with a menu of stop times
 struct SleepTimerButton: View {
     let endsAt: Date?
-    /// End of the on-air show, offered as an extra option when known.
+    // end of the show on air, offered when known
     let showEndsAt: Date?
     let onSet: (Date?) -> Void
 
@@ -61,13 +68,17 @@ struct SleepTimerButton: View {
     var body: some View {
         Menu {
             if endsAt != nil {
-                Button("Turn Off Timer", systemImage: "xmark", role: .destructive) { onSet(nil) }
+                Button("Turn Off Timer", systemImage: "xmark", role: .destructive) {
+                    onSet(nil)
+                }
             }
             if let showEndsAt, showEndsAt > .now {
-                Button("End of Show", systemImage: "calendar") { onSet(showEndsAt) }
+                Button("End of Show", systemImage: "calendar") {
+                    onSet(showEndsAt)
+                }
             }
             ForEach(Self.durations, id: \.self) { minutes in
-                Button(minutes == 60 ? "1 hour" : "\(minutes) minutes") {
+                Button(label(for: minutes)) {
                     onSet(.now.addingTimeInterval(TimeInterval(minutes * 60)))
                 }
             }
@@ -75,6 +86,7 @@ struct SleepTimerButton: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 12).fill(Color.primary)
                 Group {
+                    // a countdown while the timer runs
                     if let endsAt, endsAt > .now {
                         VStack(spacing: 1) {
                             Image(systemName: "alarm.fill")
@@ -99,6 +111,22 @@ struct SleepTimerButton: View {
         .menuOrder(.fixed)
         .sensoryFeedback(.selection, trigger: endsAt)
         .accessibilityLabel("Sleep timer")
-        .accessibilityValue(endsAt.map { "Stops at \($0.formatted(date: .omitted, time: .shortened))" } ?? "Off")
+        .accessibilityValue(timerDescription)
+    }
+
+    // "1 hour" or "15 minutes"
+    private func label(for minutes: Int) -> String {
+        if minutes == 60 {
+            return "1 hour"
+        }
+        return "\(minutes) minutes"
+    }
+
+    // what voiceover says about the timer
+    private var timerDescription: String {
+        guard let endsAt else {
+            return "Off"
+        }
+        return "Stops at \(endsAt.formatted(date: .omitted, time: .shortened))"
     }
 }

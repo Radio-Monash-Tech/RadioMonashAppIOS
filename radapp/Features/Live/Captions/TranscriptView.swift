@@ -1,23 +1,32 @@
 import SwiftUI
 
-/// The captions from this listen, oldest first: the same lines the Live
-/// screen keeps, so you can scroll back and search them. Nothing is saved to
-/// the iPhone, so they go when captions restart or the app closes. A long
-/// press copies or shares a line as a quote.
+// this listen's captions, oldest first, searchable; nothing is saved
 struct TranscriptView: View {
     @EnvironmentObject private var player: RadioPlayerModel
     @State private var search = ""
 
-    private var captions: CaptionCoordinator { player.captions }
-
-    private var allLines: [CaptionLine] {
-        captions.lines + (captions.liveLine.map { [$0] } ?? [])
+    private var captions: CaptionCoordinator {
+        player.captions
     }
 
+    // finished lines plus the one still being heard
+    private var allLines: [CaptionLine] {
+        var lines = captions.lines
+        if let liveLine = captions.liveLine {
+            lines.append(liveLine)
+        }
+        return lines
+    }
+
+    // the lines that match the search
     private var results: [CaptionLine] {
         let query = search.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return allLines }
-        return allLines.filter { $0.text.localizedCaseInsensitiveContains(query) }
+        guard !query.isEmpty else {
+            return allLines
+        }
+        return allLines.filter { line in
+            line.text.localizedCaseInsensitiveContains(query)
+        }
     }
 
     var body: some View {
@@ -25,12 +34,14 @@ struct TranscriptView: View {
             Section {
                 ForEach(results) { line in
                     TranscriptRow(line: line, highlight: search)
+                        // long press to copy or share
                         .contextMenu {
                             Button {
                                 UIPasteboard.general.string = line.text
                             } label: {
                                 Label("Copy", systemImage: "doc.on.doc")
                             }
+                            // only talk can be shared as a quote
                             if case .host(let show) = line.speaker {
                                 Button {
                                     SystemPresenter.share("“\(line.text)”\n— \(show) on Radio Monash")
@@ -64,18 +75,25 @@ struct TranscriptView: View {
     }
 }
 
+// a talk or lyrics pill, the show or song, and the line
 private struct TranscriptRow: View {
     let line: CaptionLine
     let highlight: String
 
     private var isLyric: Bool {
-        if case .lyrics = line.speaker { true } else { false }
+        if case .lyrics = line.speaker {
+            return true
+        }
+        return false
     }
 
+    // the show for talk, the song for lyrics
     private var source: String {
         switch line.speaker {
-        case .host(let show): show
-        case .lyrics(let track): track
+        case .host(let show):
+            show
+        case .lyrics(let track):
+            track
         }
     }
 
@@ -96,11 +114,13 @@ private struct TranscriptRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// The text with every search match marked.
+    // the line with every search match marked yellow
     private var highlighted: AttributedString {
         var text = AttributedString(line.text)
         let query = highlight.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return text }
+        guard !query.isEmpty else {
+            return text
+        }
         var searchFrom = text.startIndex
         while let range = text[searchFrom...].range(of: query, options: .caseInsensitive) {
             text[range].backgroundColor = .yellow.opacity(0.45)
@@ -110,6 +130,7 @@ private struct TranscriptRow: View {
     }
 }
 
+// green "Lyrics" or orange "Talk"
 private struct KindPill: View {
     let isLyric: Bool
 

@@ -1,8 +1,7 @@
 import Foundation
 import Speech
 
-/// Whether Live Captions can run, and the one-off download of Apple's
-/// speech model for the listener's language.
+// whether live captions can run
 enum CaptionAvailability: Equatable {
     case checking
     case unsupported(String)
@@ -11,9 +10,10 @@ enum CaptionAvailability: Equatable {
     case ready
 }
 
+// checks for and downloads apple's speech model
 @available(iOS 26, *)
 enum CaptionModelManager {
-    /// Australian English, or the nearest English the phone supports.
+    // australian english, or the nearest english the phone supports
     static func locale() async -> Locale? {
         for identifier in ["en_AU", "en_GB", "en_US"] {
             if let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: identifier)) {
@@ -42,10 +42,12 @@ enum CaptionModelManager {
         }
     }
 
-    /// Downloads and installs the model, reporting progress from 0 to 1.
+    // downloads and installs the model, reporting progress from 0 to 1
     static func download(for locale: Locale, progress: @escaping @MainActor (Double) -> Void) async throws {
-        guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber(for: locale)]) else {
-            return // already installed
+        let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber(for: locale)])
+        // nil means it's already installed
+        guard let request else {
+            return
         }
         let polling = Task { @MainActor in
             while !Task.isCancelled {
@@ -53,7 +55,9 @@ enum CaptionModelManager {
                 try? await Task.sleep(for: .milliseconds(250))
             }
         }
-        defer { polling.cancel() }
+        defer {
+            polling.cancel()
+        }
         try await request.downloadAndInstall()
     }
 

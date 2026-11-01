@@ -1,7 +1,9 @@
 import SwiftUI
 
+// the small now-playing bar above the tab bar
 struct MiniPlayer: View {
     @EnvironmentObject private var player: RadioPlayerModel
+    // jumps to the live tab
     let onOpen: () -> Void
 
     var body: some View {
@@ -13,8 +15,8 @@ struct MiniPlayer: View {
                     ArtworkImage(url: player.nowPlaying.artworkURL)
                 }
             }
-                .frame(width: 32, height: 32)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .frame(width: 32, height: 32)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
             VStack(alignment: .leading, spacing: 0) {
                 MarqueeText(player.displayTitle, font: .subheadline.weight(.semibold))
@@ -42,6 +44,7 @@ struct MiniPlayer: View {
         }
         .padding(.leading, 12)
         .padding(.trailing, 4)
+        // tapping anywhere but the play button opens the player
         .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
         .accessibilityElement(children: .contain)

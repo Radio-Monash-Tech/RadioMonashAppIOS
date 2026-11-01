@@ -1,5 +1,6 @@
 import SwiftUI
 
+// the LIVE / BUFFERING / OFFLINE pill in the toolbar
 struct ConnectionQualityBadge: View {
     let connectivity: Connectivity
     @Environment(\.accentChoice) private var accent
@@ -7,30 +8,58 @@ struct ConnectionQualityBadge: View {
 
     private var color: Color {
         switch connectivity {
-        case .good: return accent.color
-        case .weak: return PlayerPalette.warn
-        case .offline: return PlayerPalette.error
+        case .good:
+            return accent.color
+        case .weak:
+            return PlayerPalette.warn
+        case .offline:
+            return PlayerPalette.error
         }
     }
 
     private var text: String {
         switch connectivity {
-        case .good: return "LIVE"
-        case .weak: return "BUFFERING"
-        case .offline: return "OFFLINE"
+        case .good:
+            return "LIVE"
+        case .weak:
+            return "BUFFERING"
+        case .offline:
+            return "OFFLINE"
         }
     }
 
-    private var isLive: Bool { connectivity == .good }
+    private var isLive: Bool {
+        connectivity == .good
+    }
+
+    // the dot pulses only while live
+    private var dotOpacity: Double {
+        guard isLive else {
+            return 1
+        }
+        if pulse {
+            return 1
+        }
+        return 0.5
+    }
+
+    private var pulseAnimation: Animation {
+        if isLive {
+            return .easeInOut(duration: 0.75).repeatForever(autoreverses: true)
+        }
+        return .default
+    }
 
     var body: some View {
         HStack(spacing: 6) {
             Circle()
                 .fill(color)
-                .opacity(isLive ? (pulse ? 1 : 0.5) : 1)
+                .opacity(dotOpacity)
                 .frame(width: 8, height: 8)
-                .animation(isLive ? .easeInOut(duration: 0.75).repeatForever(autoreverses: true) : .default, value: pulse)
-                .onAppear { pulse = true }
+                .animation(pulseAnimation, value: pulse)
+                .onAppear {
+                    pulse = true
+                }
             Text(text)
                 .font(.caption2.bold())
                 .kerning(0.5)
@@ -41,7 +70,7 @@ struct ConnectionQualityBadge: View {
         .background(color.opacity(0.2), in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(color, lineWidth: 1))
         .animation(.easeInOut(duration: 0.3), value: connectivity)
-        // It sits in the navigation bar beside the title, so it only grows so far.
+        // capped so it fits beside the title
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 }

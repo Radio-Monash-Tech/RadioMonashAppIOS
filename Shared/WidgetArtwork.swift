@@ -1,16 +1,13 @@
 import Foundation
 
-/// Cover art handed from the app to the Home Screen widget. The widget can't
-/// download images itself, so the app saves a copy into the shared App Group
-/// container and the widget snapshot carries its file name.
+// where the app saves cover art for the widget, which can't download images itself
 nonisolated enum WidgetArtwork {
     static let appGroup = "group.edu.monash.radapp"
 
+    // named for an old live activity; kept so covers already on phones are still found
     static var directory: URL? {
         FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroup)?
-            // Named for the Live Activity it was first made for; kept so
-            // covers already saved on phones are still found.
             .appendingPathComponent("LiveActivityArtwork", isDirectory: true)
     }
 
@@ -18,8 +15,7 @@ nonisolated enum WidgetArtwork {
         directory?.appendingPathComponent(name)
     }
 
-    /// The saved cover's file. (Covers were once also saved smaller for a
-    /// Live Activity, so the widget's copy has its own name.)
+    // the widget's copy has its own name, left over from the live activity
     static func largeFileName(for name: String) -> String {
         name.replacingOccurrences(of: ".jpg", with: "-large.jpg")
     }

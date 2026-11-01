@@ -1,8 +1,7 @@
 import Foundation
 import SwiftData
 
-/// Records how long the stream plays, and which show was on, for Listening
-/// Statistics. Everything stays in the on-device database.
+// records how long the stream plays and which show was on, on the device only
 @MainActor
 final class ListeningTracker {
     struct Show: Equatable {
@@ -11,13 +10,14 @@ final class ListeningTracker {
     }
 
     private let modelContext: ModelContext
+    // the stretch being recorded right now
     private var segment: ListeningSegment?
     private var sessionID: UUID?
     private var checkpointTask: Task<Void, Never>?
 
-    /// How often an open segment is saved, so a crash or force quit loses at most this much.
+    // saved this often, so a crash loses at most 30 seconds
     private static let checkpointInterval: Duration = .seconds(30)
-    /// Shorter blips (a quick play/pause) aren't worth keeping.
+    // quick play/pause blips aren't kept
     private static let minimumSegment: TimeInterval = 5
 
     init(modelContext: ModelContext) {
@@ -27,11 +27,14 @@ final class ListeningTracker {
     func update(state: StreamState, show: Show?) {
         switch state {
         case .playing:
-            if let segment, segment.showName == show?.name, segment.seriesID == show?.seriesID { return }
+            // same show as the open segment, so keep going
+            if let segment, segment.showName == show?.name, segment.seriesID == show?.seriesID {
+                return
+            }
             closeSegment()
             open(show: show)
         case .connecting:
-            // Reconnecting mid-listen carries on the same session.
+            // reconnecting carries on the same session
             closeSegment()
         case .idle, .paused, .failed:
             closeSegment()
@@ -39,20 +42,21 @@ final class ListeningTracker {
         }
     }
 
-    /// Deletes everything recorded. The caller calls `update` straight after
-    /// so a stream that's playing starts counting again from now.
+    // deletes everything; the caller calls update straight after to start counting again
     func reset() {
         checkpointTask?.cancel()
         checkpointTask = nil
         segment = nil
         sessionID = nil
-        // Deleted one by one so open @Query views notice straight away.
-        for segment in (try? modelContext.fetch(FetchDescriptor<ListeningSegment>())) ?? [] {
+        // one by one, so open @Query screens notice straight away
+        let allSegments = (try? modelContext.fetch(FetchDescriptor<ListeningSegment>())) ?? []
+        for segment in allSegments {
             modelContext.delete(segment)
         }
         try? modelContext.save()
     }
 
+    // starts a new segment and saves it every 30 seconds
     private func open(show: Show?) {
         let id = sessionID ?? UUID()
         sessionID = id
@@ -62,20 +66,27 @@ final class ListeningTracker {
         checkpointTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.checkpointInterval)
-                guard !Task.isCancelled, let self else { return }
+                guard !Task.isCancelled, let self else {
+                    return
+                }
                 self.segment?.end = .now
                 try? self.modelContext.save()
             }
         }
     }
 
+    // ends the open segment, dropping it if it was too short
     private func closeSegment() {
         checkpointTask?.cancel()
         checkpointTask = nil
-        guard let segment else { return }
+        guard let segment else {
+            return
+        }
         self.segment = nil
         segment.end = .now
-        if segment.duration < Self.minimumSegment { modelContext.delete(segment) }
+        if segment.duration < Self.minimumSegment {
+            modelContext.delete(segment)
+        }
         try? modelContext.save()
     }
 }

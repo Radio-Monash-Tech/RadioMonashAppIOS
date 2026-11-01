@@ -1,7 +1,6 @@
 import AVFoundation
 
-/// Converts tapped audio (mono float at the stream's 44.1 kHz) into the
-/// format the speech analyser asks for, usually 16 kHz.
+// converts the tapped audio (mono, 44.1 khz) into the format speech recognition wants, usually 16 khz
 nonisolated final class AudioFormatAdapter {
     let outputFormat: AVAudioFormat
     private var converter: AVAudioConverter?
@@ -11,18 +10,26 @@ nonisolated final class AudioFormatAdapter {
     }
 
     func convert(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
-        if buffer.format == outputFormat { return buffer }
+        // already the right format
+        if buffer.format == outputFormat {
+            return buffer
+        }
+        // a new converter only when the input format changes
         if converter?.inputFormat != buffer.format {
             converter = AVAudioConverter(from: buffer.format, to: outputFormat)
         }
-        guard let converter else { return nil }
+        guard let converter else {
+            return nil
+        }
 
+        // room for the resampled audio, plus a little spare
         let ratio = outputFormat.sampleRate / buffer.format.sampleRate
         let capacity = AVAudioFrameCount((Double(buffer.frameLength) * ratio).rounded(.up)) + 64
-        guard let output = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: capacity) else { return nil }
+        guard let output = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: capacity) else {
+            return nil
+        }
 
-        // The converter pulls input until told there's none left for now;
-        // `.noDataNow` (not end of stream) keeps its resampler state for the next buffer.
+        // hand over the buffer once, then say "no data for now" so the converter keeps its state
         var supplied = false
         var error: NSError?
         let status = converter.convert(to: output, error: &error) { _, inputStatus in
@@ -34,7 +41,9 @@ nonisolated final class AudioFormatAdapter {
             inputStatus.pointee = .haveData
             return buffer
         }
-        guard status != .error, output.frameLength > 0 else { return nil }
+        guard status != .error, output.frameLength > 0 else {
+            return nil
+        }
         return output
     }
 }

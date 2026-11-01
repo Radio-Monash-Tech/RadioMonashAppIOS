@@ -1,9 +1,6 @@
 import SwiftUI
 
-/// Captions in place of the artwork while CC is on: a small now-playing row,
-/// then what's been said or sung, grouped by speaker. The newest line sits
-/// at the bottom with a cursor while it's still being heard; older lines
-/// fade towards the top.
+// captions in place of the artwork, newest line at the bottom
 struct LiveCaptionsView: View {
     let captions: CaptionCoordinator
     let title: String
@@ -11,13 +8,17 @@ struct LiveCaptionsView: View {
     let artworkURL: URL?
     let showsStationLogo: Bool
 
+    // the caption size set in the phone's accessibility settings
     @State private var systemSize = CaptionStyle.systemRelativeSize
     @ScaledMetric(relativeTo: .title3) private var hostSize: CGFloat = 20
     @ScaledMetric(relativeTo: .title2) private var lyricSize: CGFloat = 25
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
-    private var scale: CGFloat { captions.textSize.scale(system: systemSize) }
+    // the Aa size combined with the system size
+    private var scale: CGFloat {
+        captions.textSize.scale(system: systemSize)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,16 +37,18 @@ struct LiveCaptionsView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 14)
         }
+        // pick up caption style changes from settings
         .onReceive(NotificationCenter.default.publisher(for: CaptionStyle.didChange)) { _ in
             systemSize = CaptionStyle.systemRelativeSize
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { systemSize = CaptionStyle.systemRelativeSize }
+            if phase == .active {
+                systemSize = CaptionStyle.systemRelativeSize
+            }
         }
     }
 
-    // MARK: Now playing
-
+    // small artwork, title and artist
     private var nowPlayingRow: some View {
         HStack(spacing: 12) {
             Group {
@@ -71,8 +74,7 @@ struct LiveCaptionsView: View {
         .accessibilityElement(children: .combine)
     }
 
-    // MARK: Captions
-
+    // the scrolling captions, kept at the bottom as lines arrive
     private var captionScroll: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -87,15 +89,19 @@ struct LiveCaptionsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
-            // Older lines fade out under the now-playing row.
+            // older lines fade out under the now-playing row
             .mask(
                 LinearGradient(stops: [.init(color: .clear, location: 0),
                                        .init(color: .black, location: 0.34)],
                                startPoint: .top, endPoint: .bottom)
             )
             .defaultScrollAnchor(.bottom)
-            .onChange(of: captions.liveLine?.text) { scrollToEnd(proxy) }
-            .onChange(of: captions.lines.count) { scrollToEnd(proxy) }
+            .onChange(of: captions.liveLine?.text) {
+                scrollToEnd(proxy)
+            }
+            .onChange(of: captions.lines.count) {
+                scrollToEnd(proxy)
+            }
         }
     }
 
@@ -103,10 +109,13 @@ struct LiveCaptionsView: View {
         if reduceMotion {
             proxy.scrollTo("bottom", anchor: .bottom)
         } else {
-            withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("bottom", anchor: .bottom) }
+            withAnimation(.easeOut(duration: 0.25)) {
+                proxy.scrollTo("bottom", anchor: .bottom)
+            }
         }
     }
 
+    // a speaker label and their lines
     private func groupView(_ group: CaptionGroup) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             SpeakerLabel(speaker: group.speaker)
@@ -120,8 +129,14 @@ struct LiveCaptionsView: View {
         .accessibilityElement(children: .combine)
     }
 
+    // one line; lyrics are bigger and bolder, the live line has a cursor
     private func lineView(_ line: CaptionLine, isLive: Bool, fromEnd: Int) -> some View {
-        let isLyric = if case .lyrics = line.speaker { true } else { false }
+        let isLyric: Bool
+        if case .lyrics = line.speaker {
+            isLyric = true
+        } else {
+            isLyric = false
+        }
         let size = (isLyric ? lyricSize : hostSize) * scale
 
         return HStack(alignment: .lastTextBaseline, spacing: 3) {
@@ -129,18 +144,31 @@ struct LiveCaptionsView: View {
                 .font(.system(size: size, weight: isLyric ? .bold : .semibold))
                 .foregroundStyle(isLive ? Color.primary : Color.primary.opacity(opacity(fromEnd)))
                 .fixedSize(horizontal: false, vertical: true)
-            if isLive { LiveCaret(height: size * 0.95) }
+            if isLive {
+                LiveCaret(height: size * 0.95)
+            }
         }
         .contentTransition(.opacity)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: line.text)
+        .animation(lineAnimation, value: line.text)
     }
 
-    /// Older lines fade so the eye stays on the newest one.
+    // no animation with reduce motion
+    private var lineAnimation: Animation? {
+        if reduceMotion {
+            return nil
+        }
+        return .easeOut(duration: 0.2)
+    }
+
+    // older lines fade so the eye stays on the newest
     private func opacity(_ fromEnd: Int) -> Double {
         switch fromEnd {
-        case 0: 0.68
-        case 1: 0.5
-        default: 0.38
+        case 0:
+            0.68
+        case 1:
+            0.5
+        default:
+            0.38
         }
     }
 
@@ -153,8 +181,7 @@ struct LiveCaptionsView: View {
         }
     }
 
-    // MARK: Footnote
-
+    // the status line under the captions
     private var footnote: some View {
         let (symbol, message) = status
         return HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -166,6 +193,7 @@ struct LiveCaptionsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    // icon and message for what the captions are doing
     private var status: (String, String) {
         if let message = captions.errorMessage {
             return ("exclamationmark.circle.fill", message)
@@ -186,7 +214,7 @@ struct LiveCaptionsView: View {
     }
 }
 
-/// "THE ARVO SHOW · HOST" or "LYRICS · OFFSHORE" above a group of lines.
+// "THE ARVO SHOW · HOST" or "LYRICS · SONG" above a group
 struct SpeakerLabel: View {
     let speaker: CaptionSpeaker
     @Environment(\.accentChoice) private var accent
@@ -205,6 +233,7 @@ struct SpeakerLabel: View {
     }
 }
 
+// a small icon and spaced-out text on one line
 private struct CompactLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 6) {
@@ -216,10 +245,13 @@ private struct CompactLabelStyle: LabelStyle {
 }
 
 private extension LabelStyle where Self == CompactLabelStyle {
-    static var compact: CompactLabelStyle { .init() }
+    // lets callers write .labelStyle(.compact)
+    static var compact: CompactLabelStyle {
+        .init()
+    }
 }
 
-/// The blinking cursor after a line that's still being heard.
+// the blinking cursor after the line still being heard
 struct LiveCaret: View {
     var height: CGFloat
     @State private var visible = true
@@ -232,8 +264,13 @@ struct LiveCaret: View {
             .frame(width: 3, height: height)
             .opacity(visible ? 1 : 0)
             .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(.linear(duration: 0.01).delay(0.5).repeatForever()) { visible = false }
+                // stays still with reduce motion
+                guard !reduceMotion else {
+                    return
+                }
+                withAnimation(.linear(duration: 0.01).delay(0.5).repeatForever()) {
+                    visible = false
+                }
             }
             .accessibilityHidden(true)
     }

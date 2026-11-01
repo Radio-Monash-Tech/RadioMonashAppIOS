@@ -1,23 +1,32 @@
 import SwiftUI
 import SwiftData
 
+// the journalism tab: topic filter and the article list
 struct JournalismView: View {
     @EnvironmentObject private var journalism: JournalismStore
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accentChoice) private var accent
     @Query private var savedArticles: [SavedArticle]
+    // the articles opened, for the navigation stack
     @State private var path: [Article] = []
     @Environment(\.isLandscapePhone) private var isLandscape
 
+    // saved articles looked up by article id
     private var savedByID: [String: SavedArticle] {
-        Dictionary(savedArticles.map { ($0.articleID, $0) }, uniquingKeysWith: { first, _ in first })
+        let pairs = savedArticles.map { saved in
+            (saved.articleID, saved)
+        }
+        // keep the first if one article was saved twice
+        return Dictionary(pairs, uniquingKeysWith: { first, _ in
+            first
+        })
     }
 
     var body: some View {
         NavigationStack(path: $path) {
             Group {
                 if isLandscape, let lead = journalism.articles.first {
-                    // Latest story stays put on the left; the rest scroll on the right.
+                    // latest story on the left, the rest scroll on the right
                     HStack(alignment: .top, spacing: 0) {
                         ScrollView {
                             leadCard(lead)
@@ -32,20 +41,31 @@ struct JournalismView: View {
                 }
             }
             .navigationTitle("Journalism")
-            .refreshable { await journalism.load() }
-            .task { await journalism.loadIfNeeded() }
-            .navigationDestination(for: Article.self) { ArticleView(article: $0) }
+            // pull to refresh
+            .refreshable {
+                await journalism.load()
+            }
+            .task {
+                await journalism.loadIfNeeded()
+            }
+            // opening an article
+            .navigationDestination(for: Article.self) { article in
+                ArticleView(article: article)
+            }
         }
     }
 
     private var articleList: some View {
         List {
             TopicFilter(selection: journalism.topic) { topic in
-                Task { await journalism.select(topic) }
+                Task {
+                    await journalism.select(topic)
+                }
             }
             .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
+            // showing the saved copy because loading failed
             if let savedAt = journalism.offlineCopyDate {
                 OfflineNote(savedAt: savedAt)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
@@ -57,8 +77,7 @@ struct JournalismView: View {
         .listStyle(.plain)
     }
 
-    /// The lead story in the landscape sidebar. It isn't a list row, so saving
-    /// moves from a swipe to a long-press menu.
+    // the lead story in landscape; not a list row, so saving is a long press instead of a swipe
     private func leadCard(_ article: Article) -> some View {
         let savedCopy = savedByID[article.id]
         return Button {
@@ -84,11 +103,12 @@ struct JournalismView: View {
         if journalism.articles.isEmpty {
             switch journalism.phase {
             case .idle, .loading:
+                // grey placeholder cards while loading
                 Group {
                     FeatureCard(article: .placeholder(0))
                         .articleListRow()
-                    ForEach(1..<5, id: \.self) {
-                        ArticleRow(article: .placeholder($0))
+                    ForEach(1..<5, id: \.self) { index in
+                        ArticleRow(article: .placeholder(index))
                             .articleListRow()
                     }
                 }
@@ -99,8 +119,12 @@ struct JournalismView: View {
                 } description: {
                     Text(message)
                 } actions: {
-                    Button("Try Again") { Task { await journalism.load() } }
-                        .buttonStyle(.bordered)
+                    Button("Try Again") {
+                        Task {
+                            await journalism.load()
+                        }
+                    }
+                    .buttonStyle(.bordered)
                 }
                 .padding(.top, 40)
                 .articleListRow()
@@ -115,14 +139,17 @@ struct JournalismView: View {
             }
         } else {
             let saved = savedByID
-            // In landscape the lead story is in the sidebar, so the list starts at the second.
+            // in landscape the lead story is in the sidebar, so the list starts at the second
             let listed = Array(journalism.articles.enumerated()).dropFirst(isLandscape ? 1 : 0)
             ForEach(listed, id: \.element.id) { index, article in
                 let savedCopy = saved[article.id]
                 Button {
                     path.append(article)
                 } label: {
-                    let toggleSave = { modelContext.toggleSaved(article, existing: savedCopy) }
+                    let toggleSave = {
+                        modelContext.toggleSaved(article, existing: savedCopy)
+                    }
+                    // the first article gets the big card
                     if index == 0 {
                         FeatureCard(article: article, isSaved: savedCopy != nil, onToggleSave: toggleSave)
                     } else {
@@ -131,6 +158,7 @@ struct JournalismView: View {
                 }
                 .buttonStyle(.plain)
                 .articleListRow()
+                // swipe left to save or unsave
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button {
                         modelContext.toggleSaved(article, existing: savedCopy)
@@ -140,9 +168,12 @@ struct JournalismView: View {
                     }
                     .tint(savedCopy == nil ? accent.color : .gray)
                 }
+                // load the next page when the last article appears
                 .onAppear {
                     if article.id == journalism.articles.last?.id {
-                        Task { await journalism.loadMore() }
+                        Task {
+                            await journalism.loadMore()
+                        }
                     }
                 }
             }
@@ -152,16 +183,21 @@ struct JournalismView: View {
                     .frame(maxWidth: .infinity)
                     .articleListRow()
             } else if journalism.loadMoreFailed {
-                Button("Load More Articles") { Task { await journalism.loadMore() } }
-                    .buttonStyle(.bordered)
-                    .frame(maxWidth: .infinity)
-                    .articleListRow()
+                Button("Load More Articles") {
+                    Task {
+                        await journalism.loadMore()
+                    }
+                }
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity)
+                .articleListRow()
             }
         }
     }
 }
 
 private extension View {
+    // the spacing and clear background every row uses
     func articleListRow() -> some View {
         listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
             .listRowSeparator(.hidden)
@@ -169,8 +205,7 @@ private extension View {
     }
 }
 
-// MARK: - Components
-
+// the big card for the latest article
 private struct FeatureCard: View {
     let article: Article
     var isSaved = false
@@ -194,21 +229,23 @@ private struct FeatureCard: View {
         }
         .padding(12)
         .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        // the whole card is tappable
         .contentShape(Rectangle())
     }
 }
 
-/// An Apple News–style card: topic and title on the left, a square photo on the right.
+// apple news style row: title on the left, square photo on the right
 private struct ArticleRow: View {
     let article: Article
     var isSaved = false
     var onToggleSave: () -> Void = {}
     @Environment(\.dynamicTypeSize) private var typeSize
+    // grows with the user's text size
     @ScaledMetric(relativeTo: .headline) private var imageSize: CGFloat = 108
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // At the largest sizes the title needs the full width, so the photo goes on top.
+            // at the largest text sizes the photo goes on top so the title gets the full width
             if typeSize.isAccessibilitySize {
                 ArtworkImage(url: article.imageURL?.squarespaceSized(1000))
                     .aspectRatio(16 / 9, contentMode: .fit)
@@ -230,6 +267,7 @@ private struct ArticleRow: View {
         .contentShape(Rectangle())
     }
 
+    // topic and title
     private var headline: some View {
         VStack(alignment: .leading, spacing: 4) {
             ArticleSource(article: article)
@@ -241,7 +279,7 @@ private struct ArticleRow: View {
     }
 }
 
-/// The label above a title, where Apple News shows the publisher.
+// the coloured topic label above a title
 private struct ArticleSource: View {
     let article: Article
     var isLatest = false
@@ -256,7 +294,7 @@ private struct ArticleSource: View {
     }
 }
 
-/// Byline on the left, the ••• menu on the right.
+// byline on the left, ••• menu on the right
 private struct ArticleFooter: View {
     let article: Article
     let isSaved: Bool
@@ -271,6 +309,7 @@ private struct ArticleFooter: View {
                     Label(isSaved ? "Remove from Saved" : "Save Article",
                           systemImage: isSaved ? "bookmark.slash" : "bookmark")
                 }
+                // SystemPresenter because ShareLink breaks inside a Menu
                 Button {
                     SystemPresenter.share(article.webURL ?? SquarespaceClient.siteURL)
                 } label: {
@@ -289,6 +328,7 @@ private struct ArticleFooter: View {
 }
 
 extension Article {
+    // a fake article for loading placeholders and previews
     static func placeholder(_ index: Int) -> Article {
         Article(
             id: "placeholder-\(index)",
@@ -310,7 +350,7 @@ extension Article {
         .modelContainer(for: SavedArticle.self, inMemory: true)
 }
 
-/// The row of filter pills at the top of Journalism.
+// the row of topic pills at the top
 private struct TopicFilter: View {
     let selection: ArticleTopic?
     let onSelect: (ArticleTopic?) -> Void
@@ -318,18 +358,24 @@ private struct TopicFilter: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
+                // nil means all topics
                 pill("All", topic: nil)
-                ForEach(ArticleTopic.allCases) { pill($0.label, topic: $0) }
+                ForEach(ArticleTopic.allCases) { topic in
+                    pill(topic.label, topic: topic)
+                }
             }
             .padding(.horizontal, 16)
         }
     }
 
     private func pill(_ title: String, topic: ArticleTopic?) -> some View {
-        TopicPill(title: title, isSelected: selection == topic) { onSelect(topic) }
+        TopicPill(title: title, isSelected: selection == topic) {
+            onSelect(topic)
+        }
     }
 }
 
+// one topic button, filled with the accent colour when selected
 private struct TopicPill: View {
     let title: String
     let isSelected: Bool
@@ -350,6 +396,7 @@ private struct TopicPill: View {
                 )
         }
         .buttonStyle(.plain)
+        // voiceover says "selected"
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

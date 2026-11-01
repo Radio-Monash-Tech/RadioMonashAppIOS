@@ -1,13 +1,12 @@
 import Foundation
 
-// Decodable shapes for GET /api/station/:stationId/streaming/history/latest-results,
-// plus their mapping into the app's domain models.
-
+// the json from streaming/history/latest-results
 struct HistoryResponse: Decodable {
     let success: Bool
     let data: [HistoryEntry]
 }
 
+// one played song
 struct HistoryEntry: Decodable {
     let playoutStart: String
     let title: String
@@ -16,6 +15,7 @@ struct HistoryEntry: Decodable {
 }
 
 extension HistoryResponse {
+    // turned into the app's own played tracks
     func toPlayedTracks() -> [PlayedTrack] {
         data.map { entry in
             PlayedTrack(

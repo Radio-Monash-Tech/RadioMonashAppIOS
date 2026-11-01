@@ -1,18 +1,19 @@
 import Foundation
 
-// A song found in the iTunes catalogue that matches a RadioCult track.
+// a song found on itunes that matches the one radiocult named
 struct ITunesTrack: Equatable {
     let id: Int
     let title: String
     let artist: String
-    // The song's Apple Music page.
+    // the song's apple music page
     let trackViewURL: URL
-    // 600px artwork, rewritten from the 100px URL iTunes documents.
+    // 600px artwork, rewritten from itunes' 100px url
     let artworkURL: URL?
-    // The documented 100px artwork, for when the rewritten URL fails to load.
+    // the 100px artwork, if the 600px one fails
     let thumbnailURL: URL?
 
-    // Song.link's page for the song, listing it on every streaming service.
-    // Its API is retired, but these public pages still resolve from an iTunes ID.
-    var songLinkURL: URL { URL(string: "https://song.link/i/\(id)")! }
+    // song.link's page listing the song on every streaming service
+    var songLinkURL: URL {
+        URL(string: "https://song.link/i/\(id)")!
+    }
 }

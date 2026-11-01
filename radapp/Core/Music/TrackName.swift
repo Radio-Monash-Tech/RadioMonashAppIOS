@@ -1,18 +1,15 @@
 import Foundation
 
-// A catalogue entry's title, artist credit and length, for comparing against
-// what RadioCult reported.
+// one search result's title, artist and length
 struct SongCredit {
     let title: String
     let artist: String
     let length: TimeInterval?
 }
 
-// Reduces titles and artist credits to a comparable form, since RadioCult and
-// the music catalogues rarely agree on casing, accents, featured artists or edition tags.
+// tidies song titles and artists so radiocult and itunes can be compared
 enum TrackName {
-    // The candidate that is the same song. When several are (album, single and
-    // compilation releases), prefers the one closest to the broadcast length.
+    // the search result that is the same song, closest to the broadcast length
     static func bestMatch<Candidate>(
         in candidates: [Candidate],
         title: String,
@@ -22,75 +19,117 @@ enum TrackName {
     ) -> Candidate? {
         let wantedTitle = self.title(title)
         let wantedArtist = primaryArtist(artist)
-        guard !wantedTitle.isEmpty, !wantedArtist.isEmpty else { return nil }
+        guard !wantedTitle.isEmpty, !wantedArtist.isEmpty else {
+            return nil
+        }
 
+        // pair each candidate with its credit, keep only the same song
         let matches = candidates
-            .compactMap { candidate in credit(candidate).map { (candidate, $0) } }
-            .filter { isSameSong($0.1, title: wantedTitle, artist: wantedArtist) }
-        guard let duration, duration > 0 else { return matches.first?.0 }
-        return matches.min {
-            ($0.1.length.map { abs($0 - duration) } ?? .infinity) < ($1.1.length.map { abs($0 - duration) } ?? .infinity)
-        }?.0
+            .compactMap { candidate -> (candidate: Candidate, songCredit: SongCredit)? in
+                guard let songCredit = credit(candidate) else {
+                    return nil
+                }
+                return (candidate, songCredit)
+            }
+            .filter { match in
+                isSameSong(match.songCredit, title: wantedTitle, artist: wantedArtist)
+            }
+
+        // no broadcast length to compare, take the first
+        guard let duration, duration > 0 else {
+            return matches.first?.candidate
+        }
+
+        // seconds between a result's length and the broadcast, unknown lengths go last
+        func difference(_ songCredit: SongCredit) -> TimeInterval {
+            guard let length = songCredit.length else {
+                return .infinity
+            }
+            return abs(length - duration)
+        }
+
+        return matches.min { first, second in
+            difference(first.songCredit) < difference(second.songCredit)
+        }?.candidate
     }
 
-    // The search query: lead artist and bare title, which finds the song
-    // more reliably than the full credit with every edition tag.
+    // lead artist and bare title, finds the song better than the full credit
     static func searchTerm(title: String, artist: String) -> String {
         let title = self.title(title)
-        guard !title.isEmpty else { return "" }
-        return [primaryArtist(artist), title].filter { !$0.isEmpty }.joined(separator: " ")
+        guard !title.isEmpty else {
+            return ""
+        }
+        let parts = [primaryArtist(artist), title].filter { part in
+            !part.isEmpty
+        }
+        return parts.joined(separator: " ")
     }
 
-    // "Song (feat. X) - 2011 Remaster" becomes "song".
+    // "Song (feat. X) - 2011 Remaster" becomes "song"
     static func title(_ raw: String) -> String {
         var text = folded(raw)
+        // drop anything in brackets, e.g. (feat. X) or [Live]
         text = text.replacing(#/\s*[\(\[][^\)\]]*[\)\]]/#, with: "")
-        if let dash = text.range(of: " - ") { text = String(text[..<dash.lowerBound]) }
+        // drop everything after " - ", e.g. "- 2011 Remaster"
+        if let dash = text.range(of: " - ") {
+            text = String(text[..<dash.lowerBound])
+        }
+        // drop a feat. credit without brackets
         text = text.replacing(#/\s+(feat\.?|ft\.?|featuring)\s.*$/#, with: "")
         return words(text)
     }
 
-    // The whole credit, normalised: "Beyoncé & JAY-Z" becomes "beyonce and jay z".
+    // "Beyoncé & JAY-Z" becomes "beyonce and jay z"
     static func artist(_ raw: String) -> String {
-        words(folded(raw).replacingOccurrences(of: "&", with: " and "))
+        let withAnd = folded(raw).replacingOccurrences(of: "&", with: " and ")
+        return words(withAnd)
     }
 
-    // The first credited artist: "Kaytranada, H.E.R. feat. X" becomes "kaytranada".
+    // "Kaytranada, H.E.R. feat. X" becomes "kaytranada"
     static func primaryArtist(_ raw: String) -> String {
-        let lead = folded(raw)
-            .split(separator: #/,|;|\s&\s|\s+x\s+|\s+(feat\.?|ft\.?|featuring|with|vs\.?)\s+/#, maxSplits: 1)
-            .first
-            .map(String.init) ?? ""
+        // split once at the first , ; & x feat. ft. featuring with vs.
+        let parts = folded(raw).split(
+            separator: #/,|;|\s&\s|\s+x\s+|\s+(feat\.?|ft\.?|featuring|with|vs\.?)\s+/#,
+            maxSplits: 1
+        )
+        let lead = parts.first.map { part in
+            String(part)
+        } ?? ""
         return artist(lead)
     }
 
-    // Whole-word containment, so "ash" doesn't match "ashnikko".
+    // whole words only, so "ash" doesn't match "ashnikko"
     static func containsWords(_ needle: String, in haystack: String) -> Bool {
         !needle.isEmpty && " \(haystack) ".contains(" \(needle) ")
     }
 
     private static func isSameSong(_ credit: SongCredit, title wantedTitle: String, artist wantedArtist: String) -> Bool {
-        guard title(credit.title) == wantedTitle else { return false }
-        // Either side may list collaborators the other leaves out, so it's
-        // enough for one side's lead artist to appear in the other's credit.
+        guard title(credit.title) == wantedTitle else {
+            return false
+        }
+        // either side may leave out collaborators, so one lead artist in the other's credit is enough
         return containsWords(wantedArtist, in: artist(credit.artist))
             || containsWords(primaryArtist(credit.artist), in: artist(wantedArtist))
     }
 
-    // Curly apostrophes are straightened so "Don’t" and "Don't" compare equal.
+    // lowercase, no accents, straight apostrophes
     private static func folded(_ raw: String) -> String {
         raw.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: nil)
             .replacingOccurrences(of: "\u{2019}", with: "'")
     }
 
-    // Letters, digits and in-word apostrophes, single-spaced. Apostrophes stay
-    // because iTunes can't find "what s up" or "don t think" once they're split.
+    // letters, digits and apostrophes, single spaced; itunes can't find "don t" without the apostrophe
     private static func words(_ text: String) -> String {
         text.components(separatedBy: wordCharacters.inverted)
-            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "'")) }
-            .filter { !$0.isEmpty }
+            .map { word in
+                word.trimmingCharacters(in: CharacterSet(charactersIn: "'"))
+            }
+            .filter { word in
+                !word.isEmpty
+            }
             .joined(separator: " ")
     }
 
+    // what counts as part of a word
     private static let wordCharacters = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "'"))
 }

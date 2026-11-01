@@ -1,16 +1,12 @@
 import Foundation
 
-// Decodable shapes for the iTunes Search API, plus picking which result is
-// actually the song RadioCult reported.
-
-// MARK: - Wire format: GET https://itunes.apple.com/search?entity=song
-
+// the json from itunes search
 struct ITunesSearchResponse: Decodable {
     let resultCount: Int
     let results: [ITunesSong]
 }
 
-// URLs stay as strings so one malformed entry can't fail the whole response.
+// one result; urls stay strings so one bad entry can't fail the whole response
 struct ITunesSong: Decodable {
     let trackId: Int?
     let trackName: String?
@@ -21,34 +17,52 @@ struct ITunesSong: Decodable {
 }
 
 extension ITunesSearchResponse {
+    // the result that is the same song
     func bestMatch(title: String, artist: String, duration: TimeInterval?) -> ITunesTrack? {
-        TrackName.bestMatch(in: results, title: title, artist: artist, duration: duration) { song in
-            guard let trackName = song.trackName, let artistName = song.artistName else { return nil }
-            return SongCredit(title: trackName, artist: artistName, length: song.trackTimeMillis.map { $0 / 1000 })
-        }?.toTrack()
+        let match = TrackName.bestMatch(in: results, title: title, artist: artist, duration: duration) { song in
+            guard let trackName = song.trackName, let artistName = song.artistName else {
+                return nil
+            }
+            // milliseconds to seconds
+            let length = song.trackTimeMillis.map { millis in
+                millis / 1000
+            }
+            return SongCredit(title: trackName, artist: artistName, length: length)
+        }
+        return match?.toTrack()
     }
 }
 
 private extension ITunesSong {
+    // the app's own type, nil if anything needed is missing
     func toTrack() -> ITunesTrack? {
         guard let trackId, let trackName, let artistName,
-              let trackViewUrl, let pageURL = URL(string: trackViewUrl) else { return nil }
+              let trackViewUrl, let pageURL = URL(string: trackViewUrl)
+        else {
+            return nil
+        }
         let thumbnail = artworkUrl100.flatMap(URL.init(string:))
+        // 600px if the url can be rewritten, otherwise the 100px one
+        var artworkURL = thumbnail
+        if let thumbnail, let large = Self.resized(thumbnail, to: 600) {
+            artworkURL = large
+        }
         return ITunesTrack(
             id: trackId,
             title: trackName,
             artist: artistName,
             trackViewURL: pageURL,
-            artworkURL: thumbnail.flatMap { Self.resized($0, to: 600) } ?? thumbnail,
+            artworkURL: artworkURL,
             thumbnailURL: thumbnail
         )
     }
 
-    // iTunes artwork URLs end in e.g. `100x100bb.jpg`, and the CDN serves any
-    // size swapped in. Undocumented but long-standing, hence the 100px fallback.
+    // swaps "100x100" in the url for another size; undocumented, hence the fallback
     static func resized(_ url: URL, to size: Int) -> URL? {
         let string = url.absoluteString
-        guard string.contains("100x100") else { return nil }
+        guard string.contains("100x100") else {
+            return nil
+        }
         return URL(string: string.replacingOccurrences(of: "100x100", with: "\(size)x\(size)"))
     }
 }

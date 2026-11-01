@@ -1,10 +1,12 @@
 import SwiftUI
 import WidgetKit
 
-/// The medium widget: cover on the left, title and buttons on the right.
+// the medium widget: cover on the left, title and buttons on the right
 struct MediumRadioView: View {
     let entry: RadioEntry
-    private var s: RadioWidgetSnapshot { entry.snapshot }
+    private var s: RadioWidgetSnapshot {
+        entry.snapshot
+    }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -14,7 +16,7 @@ struct MediumRadioView: View {
             VStack(alignment: .leading, spacing: 0) {
                 if s.isOnAir {
                     StationLabel()
-                    // The title is already the show while one is on air.
+                    // the title is already the show
                     Text("On air now")
                         .font(.system(size: 12.5, weight: .medium))
                         .foregroundStyle(.secondary)

@@ -1,8 +1,7 @@
 import SwiftUI
 import WidgetKit
 
-/// Home Screen widgets: small (full-bleed cover), medium and large. The app
-/// keeps a `RadioWidgetSnapshot` up to date and reloads them when it changes.
+// the home screen widget in small, medium and large
 struct RadioHomeWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: RadioWidgetSnapshot.widgetKind, provider: RadioProvider()) { entry in
@@ -14,6 +13,7 @@ struct RadioHomeWidget: Widget {
     }
 }
 
+// picks the layout for the widget's size
 struct RadioWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: RadioEntry
@@ -21,17 +21,19 @@ struct RadioWidgetView: View {
     var body: some View {
         Group {
             switch family {
-            case .systemSmall: SmallRadioView(entry: entry)
-            case .systemMedium: MediumRadioView(entry: entry)
-            default: LargeRadioView(entry: entry)
+            case .systemSmall:
+                SmallRadioView(entry: entry)
+            case .systemMedium:
+                MediumRadioView(entry: entry)
+            default:
+                LargeRadioView(entry: entry)
             }
         }
         .modifier(AppAppearance(isDark: entry.snapshot.isDark))
     }
 }
 
-/// Matches the app's Appearance setting rather than iOS's when it's set to
-/// Light or Dark.
+// follows the app's light or dark setting instead of ios when one is picked
 struct AppAppearance: ViewModifier {
     let isDark: Bool?
 
@@ -43,8 +45,6 @@ struct AppAppearance: ViewModifier {
         }
     }
 }
-
-// MARK: - Previews
 
 #Preview("Small", as: .systemSmall) {
     RadioHomeWidget()

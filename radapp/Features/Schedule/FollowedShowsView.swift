@@ -1,15 +1,27 @@
 import SwiftUI
 
+// the shows the user follows, with when each is next on
 struct FollowedShowsView: View {
     @EnvironmentObject private var schedule: ScheduleStore
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
 
+    // followed shows that are on this week's schedule
     private var shows: [ShowSeries] {
-        schedule.series.filter { followed.contains($0.id) }
+        schedule.series.filter { series in
+            followed.contains(series.id)
+        }
     }
 
+    // followed shows that aren't on this week
     private var offScheduleCount: Int {
         followed.ids.count - shows.count
+    }
+
+    private var offScheduleNote: String {
+        if offScheduleCount == 1 {
+            return "1 followed show isn't on this week's schedule."
+        }
+        return "\(offScheduleCount) followed shows aren't on this week's schedule."
     }
 
     var body: some View {
@@ -35,20 +47,23 @@ struct FollowedShowsView: View {
                                 }
                             }
                         }
+                        // swipe to unfollow
                         .onDelete { offsets in
-                            for index in offsets { followed.toggle(shows[index].id) }
+                            for index in offsets {
+                                followed.toggle(shows[index].id)
+                            }
                         }
                     } footer: {
                         if schedule.phase == .loaded && offScheduleCount > 0 {
-                            Text(offScheduleCount == 1
-                                 ? "1 followed show isn't on this week's schedule."
-                                 : "\(offScheduleCount) followed shows aren't on this week's schedule.")
+                            Text(offScheduleNote)
                         }
                     }
                 }
             }
         }
         .navigationTitle("Followed Shows")
-        .task { await schedule.loadIfNeeded() }
+        .task {
+            await schedule.loadIfNeeded()
+        }
     }
 }

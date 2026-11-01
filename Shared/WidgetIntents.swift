@@ -1,10 +1,6 @@
 import AppIntents
 
-/// The Home Screen widget's Play and Like buttons. `LiveActivityIntent` makes
-/// them run inside the app's process (the app has no Live Activity; the
-/// protocol is only used for where it runs), so `perform` reaches the real
-/// player through `WidgetActions`. `AudioPlaybackIntent` also lets Play start
-/// the stream when the app isn't running.
+// the widget's play button; runs inside the app so it reaches the real player, even when closed
 nonisolated struct TogglePlaybackIntent: LiveActivityIntent, AudioPlaybackIntent {
     static let title: LocalizedStringResource = "Play or Pause Radio"
 
@@ -14,6 +10,7 @@ nonisolated struct TogglePlaybackIntent: LiveActivityIntent, AudioPlaybackIntent
     }
 }
 
+// the widget's like button
 nonisolated struct ToggleLikeIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "Like Current Track"
 
@@ -23,9 +20,7 @@ nonisolated struct ToggleLikeIntent: LiveActivityIntent {
     }
 }
 
-/// Filled in by the app at launch; left empty in the widget extension. The
-/// closures are main-actor so the player and SwiftData are only touched on
-/// the main thread, even though intents run in the background.
+// filled in by the app at launch, empty in the widget; main actor so the player is only touched there
 @MainActor
 enum WidgetActions {
     static var togglePlayback: @MainActor () -> Void = {}

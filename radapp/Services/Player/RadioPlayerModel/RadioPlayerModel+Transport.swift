@@ -1,6 +1,6 @@
 import Foundation
 
-// Play and pause.
+// play and pause
 extension RadioPlayerModel {
     func togglePlayback() {
         switch state {
@@ -9,6 +9,7 @@ extension RadioPlayerModel {
         case .paused, .idle, .failed:
             play()
         case .connecting:
+            // already on its way
             break
         }
     }

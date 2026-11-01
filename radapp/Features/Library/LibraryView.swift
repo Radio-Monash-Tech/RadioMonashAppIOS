@@ -1,11 +1,14 @@
 import SwiftUI
 import SwiftData
 
+// the screens the library can open
 enum LibraryRoute: Hashable {
     case liked, statistics, savedArticles, followedShows, settings
 }
 
+// the library tab: a menu of the user's own things
 struct LibraryView: View {
+    // only read for the counts on each row
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
     @Query private var likedTracks: [FavouriteTrack]
     @Query private var savedArticles: [SavedArticle]
@@ -24,16 +27,28 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle("Library")
-            .navigationDestination(for: LibraryRoute.self) { destination(for: $0) }
-            .navigationDestination(for: ShowSeries.self) { ShowDetailView(series: $0) }
-            .navigationDestination(for: Article.self) { ArticleView(article: $0) }
+            // the library's own screens
+            .navigationDestination(for: LibraryRoute.self) { route in
+                destination(for: route)
+            }
+            // a show, from followed shows or top shows
+            .navigationDestination(for: ShowSeries.self) { series in
+                ShowDetailView(series: series)
+            }
+            // an article, from saved articles
+            .navigationDestination(for: Article.self) { article in
+                ArticleView(article: article)
+            }
         }
     }
 
+    // one menu row with an icon and an optional count on the right
     private func row(_ title: String, systemImage: String, route: LibraryRoute, count: Int? = nil) -> some View {
         NavigationLink(value: route) {
             LabeledContent {
-                if let count { Text(count, format: .number) }
+                if let count {
+                    Text(count, format: .number)
+                }
             } label: {
                 Label(title, systemImage: systemImage)
             }
@@ -43,11 +58,16 @@ struct LibraryView: View {
     @ViewBuilder
     private func destination(for route: LibraryRoute) -> some View {
         switch route {
-        case .liked: LikedSongsView()
-        case .statistics: ListeningStatisticsView()
-        case .savedArticles: SavedArticlesView()
-        case .followedShows: FollowedShowsView()
-        case .settings: SettingsView()
+        case .liked:
+            LikedSongsView()
+        case .statistics:
+            ListeningStatisticsView()
+        case .savedArticles:
+            SavedArticlesView()
+        case .followedShows:
+            FollowedShowsView()
+        case .settings:
+            SettingsView()
         }
     }
 }

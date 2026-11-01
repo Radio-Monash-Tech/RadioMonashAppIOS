@@ -1,23 +1,33 @@
 import Foundation
 
-// Audio session set-up at launch, and reacting to calls, unplugged
-// headphones and other audio system events.
+// audio set-up at launch, and reacting to calls and unplugged headphones
 extension RadioPlayerModel {
-    /// Runs once per launch; the root view's `.task` can fire again if it reappears.
+    // runs once per launch, even if the root view's task runs again
     func prepareSession() {
-        guard !isSessionPrepared else { return }
+        guard !isSessionPrepared else {
+            return
+        }
         isSessionPrepared = true
         configureAudioSession()
         audioSession.observe()
+        // lock screen buttons
         systemPlayers.configure(
-            play: { [weak self] in self?.play() },
-            pause: { [weak self] in self?.stop() },
-            toggle: { [weak self] in self?.togglePlayback() }
+            play: { [weak self] in
+                self?.play()
+            },
+            pause: { [weak self] in
+                self?.stop()
+            },
+            toggle: { [weak self] in
+                self?.togglePlayback()
+            }
         )
         startMetadataPolling()
 
         let resumeOnLaunch = UserDefaults.standard.object(forKey: Self.resumeOnLaunchKey) as? Bool ?? false
-        if resumeOnLaunch, state == .idle { play() }
+        if resumeOnLaunch, state == .idle {
+            play()
+        }
     }
 
     func configureAudioSession() {
@@ -31,20 +41,32 @@ extension RadioPlayerModel {
     func handle(_ event: RadioAudioSession.Event) {
         switch event {
         case .interruptionBegan:
-            guard isActive else { return }
+            // a call or alarm started
+            guard isActive else {
+                return
+            }
             resumeAfterInterruption = true
             stop()
         case .interruptionEnded(let shouldResume):
-            guard resumeAfterInterruption else { return }
+            guard resumeAfterInterruption else {
+                return
+            }
             resumeAfterInterruption = false
-            if shouldResume { play() }
+            if shouldResume {
+                play()
+            }
         case .outputLost:
-            // Match iOS pausing us rather than claim to be playing in silence.
-            if state == .playing { stop() }
+            // headphones unplugged; stop like ios does instead of playing silence
+            if state == .playing {
+                stop()
+            }
         case .mediaServicesReset:
+            // ios restarted its audio, so set up again
             let wasActive = isActive
             configureAudioSession()
-            if wasActive { play() }
+            if wasActive {
+                play()
+            }
         }
     }
 }

@@ -1,10 +1,8 @@
 import SwiftUI
 
-// Keeping the Lock Screen player and Home Screen widget up to date.
+// keeping the lock screen player and home screen widget up to date
 extension RadioPlayerModel {
-    /// Pushes the current state to the system player and the Home Screen
-    /// widget. Also called when the appearance, accent colour, schedule or
-    /// followed shows change, since the widget shows those.
+    // sends everything the lock screen and widget show
     func refreshSystemPlayers() {
         let onAir = scheduledLiveShow
         systemPlayers.update(.init(
@@ -19,26 +17,48 @@ extension RadioPlayerModel {
             showStart: onAir?.start,
             showEnd: onAir?.end,
             upNext: upcomingShows,
-            isDark: appearance.colorScheme.map { $0 == .dark }
+            isDark: isDarkAppearance
         ))
     }
 
+    // the appearance setting, read straight from settings
     private var appearance: AppearancePreference {
-        UserDefaults.standard.string(forKey: AppearancePreference.storageKey)
-            .flatMap(AppearancePreference.init(rawValue:)) ?? .system
+        guard let raw = UserDefaults.standard.string(forKey: AppearancePreference.storageKey),
+              let preference = AppearancePreference(rawValue: raw)
+        else {
+            return .system
+        }
+        return preference
     }
 
-    /// The rest of today's shows, by the station's Melbourne date.
+    // nil means the widget follows the phone
+    private var isDarkAppearance: Bool? {
+        guard let scheme = appearance.colorScheme else {
+            return nil
+        }
+        return scheme == .dark
+    }
+
+    // the followed shows, read straight from settings
+    private var followedShows: StoredIDs {
+        guard let raw = UserDefaults.standard.string(forKey: StoredIDs.followedShowsKey),
+              let followed = StoredIDs(rawValue: raw)
+        else {
+            return StoredIDs()
+        }
+        return followed
+    }
+
+    // the next three shows today, by the melbourne date
     private var upcomingShows: [RadioWidgetSnapshot.UpcomingShow] {
         let now = Date()
-        let followed = UserDefaults.standard.string(forKey: StoredIDs.followedShowsKey)
-            .flatMap(StoredIDs.init(rawValue:)) ?? StoredIDs()
-        return (schedule?.shows ?? [])
-            .filter { $0.start > now && Calendar.melbourne.isDate($0.start, inSameDayAs: now) }
-            .prefix(3)
-            .map { show in
-                .init(start: show.start, title: show.series.title, hosts: show.series.hostLine,
-                      isFollowed: followed.contains(show.series.id))
-            }
+        let followed = followedShows
+        let laterToday = (schedule?.shows ?? []).filter { show in
+            show.start > now && Calendar.melbourne.isDate(show.start, inSameDayAs: now)
+        }
+        return laterToday.prefix(3).map { show in
+            .init(start: show.start, title: show.series.title, hosts: show.series.hostLine,
+                  isFollowed: followed.contains(show.series.id))
+        }
     }
 }

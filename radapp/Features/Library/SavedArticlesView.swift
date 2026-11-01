@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 
+// every bookmarked article, newest first
 struct SavedArticlesView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \SavedArticle.savedAt, order: .reverse) private var savedArticles: [SavedArticle]
@@ -16,7 +17,9 @@ struct SavedArticlesView: View {
             } else {
                 List {
                     ForEach(savedArticles) { saved in
+                        // the saved copy turned back into an Article
                         let article = saved.article
+                        // opens through LibraryView's Article destination
                         NavigationLink(value: article) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(article.title).font(.headline)
@@ -29,8 +32,11 @@ struct SavedArticlesView: View {
                             }
                         }
                     }
+                    // swipe to delete
                     .onDelete { offsets in
-                        for index in offsets { modelContext.unsave(savedArticles[index]) }
+                        for index in offsets {
+                            modelContext.unsave(savedArticles[index])
+                        }
                     }
                 }
             }

@@ -1,17 +1,18 @@
 import AppIntents
 import SwiftUI
 
-// Pieces shared by the small, medium and large Home Screen widgets.
+// pieces shared by the small, medium and large widgets
 
-/// The widget background in the app's appearance. Resolved up front, since
-/// the system draws the container background outside the view's environment.
+// the background in the app's appearance, worked out up front since ios draws it outside the view
 func widgetBackground(_ snapshot: RadioWidgetSnapshot) -> Color {
-    guard let isDark = snapshot.isDark else { return Color(.systemBackground) }
+    guard let isDark = snapshot.isDark else {
+        return Color(.systemBackground)
+    }
     let traits = UITraitCollection(userInterfaceStyle: isDark ? .dark : .light)
     return Color(uiColor: UIColor.systemBackground.resolvedColor(with: traits))
 }
 
-/// Shown only while a show is on air.
+// a dot and LIVE, only while a show is on
 struct LiveLabel: View {
     var onImage = false
 
@@ -25,6 +26,7 @@ struct LiveLabel: View {
     }
 }
 
+// "LIVE · RADIO MONASH"
 struct StationLabel: View {
     var body: some View {
         HStack(spacing: 6) {
@@ -37,7 +39,7 @@ struct StationLabel: View {
     }
 }
 
-/// The track's RadioCult cover when the app has saved one, otherwise the station logo.
+// the song's cover if the app saved one, otherwise the station logo
 struct Cover: View {
     let image: UIImage?
     var corner: CGFloat = 0
@@ -55,7 +57,7 @@ struct Cover: View {
     }
 }
 
-/// Runs in the app's process, so it can start the stream even when the app isn't open.
+// runs in the app, so it can start the stream even when the app isn't open
 struct PlayButton: View {
     let isPlaying: Bool
 
@@ -72,6 +74,7 @@ struct PlayButton: View {
     }
 }
 
+// likes the song on air
 struct LikeButton: View {
     let isLiked: Bool
 
@@ -89,7 +92,10 @@ struct LikeButton: View {
     }
 }
 
+// "until 10:00 am", only while a show is on
 func untilText(_ snapshot: RadioWidgetSnapshot) -> String? {
-    guard snapshot.isOnAir, let end = snapshot.showEnd else { return nil }
+    guard snapshot.isOnAir, let end = snapshot.showEnd else {
+        return nil
+    }
     return "until " + end.formatted(date: .omitted, time: .shortened)
 }

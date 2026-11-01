@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 
+// every song the station has reported, with like and share swipes
 struct PlayHistoryView: View {
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
@@ -16,6 +17,7 @@ struct PlayHistoryView: View {
                     description: Text("Tracks appear here once the station reports them.")
                 )
             } else {
+                // built once so each row can check quickly
                 let likedKeys = Set(favourites.map(\.key))
                 List(player.history) { track in
                     let isLiked = likedKeys.contains(track.favouriteKey)
@@ -42,6 +44,7 @@ struct PlayHistoryView: View {
                     .accessibilityElement(children: .combine)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button {
+                            // saved with the show that was on when it played
                             player.toggleLike(track, showName: schedule.onAir(at: track.playedAt)?.series.title)
                         } label: {
                             Label(isLiked ? "Unlike" : "Like",

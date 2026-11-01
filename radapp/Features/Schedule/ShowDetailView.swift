@@ -1,5 +1,6 @@
 import SwiftUI
 
+// one show: hosts, follow, listen live, about and this week's times
 struct ShowDetailView: View {
     let series: ShowSeries
 
@@ -7,9 +8,19 @@ struct ShowDetailView: View {
     @EnvironmentObject private var schedule: ScheduleStore
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
 
-    private var isFollowed: Bool { followed.contains(series.id) }
+    private var isFollowed: Bool {
+        followed.contains(series.id)
+    }
+
+    private var reminderNote: String {
+        if isFollowed {
+            return "You'll get a reminder 10 minutes before each episode."
+        }
+        return "Follow to get a reminder 10 minutes before each episode."
+    }
 
     var body: some View {
+        // redraws every minute so on air stays right
         TimelineView(.everyMinute) { context in
             List {
                 Section {
@@ -33,19 +44,23 @@ struct ShowDetailView: View {
                         Label(isFollowed ? "Following" : "Follow",
                               systemImage: isFollowed ? "bell.fill" : "bell")
                     }
-                    .sensoryFeedback(.success, trigger: isFollowed) { _, new in new }
+                    // haptic only when following
+                    .sensoryFeedback(.success, trigger: isFollowed) { _, new in
+                        new
+                    }
 
+                    // only while this show is on air
                     if schedule.onAir(at: context.date)?.series.id == series.id {
                         Button {
-                            if player.state != .playing { player.togglePlayback() }
+                            if player.state != .playing {
+                                player.togglePlayback()
+                            }
                         } label: {
                             Label("Listen Live", systemImage: "play.fill")
                         }
                     }
                 } footer: {
-                    Text(isFollowed
-                         ? "You'll get a reminder 10 minutes before each episode."
-                         : "Follow to get a reminder 10 minutes before each episode.")
+                    Text(reminderNote)
                 }
 
                 if let summary = series.summary {
@@ -70,6 +85,7 @@ struct ShowDetailView: View {
                             } label: {
                                 Text(show.dayLabel)
                             }
+                            // past episodes are greyed out
                             .foregroundStyle(show.end <= context.date ? .secondary : .primary)
                         }
                     }

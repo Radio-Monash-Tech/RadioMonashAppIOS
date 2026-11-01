@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Shown the first time captions turn on: what they are, that nothing
-/// leaves the phone, and the one-off speech model download.
+// first-time captions intro and the one-off speech model download
 struct CaptionSetupSheet: View {
     let captions: CaptionCoordinator
     @Environment(\.dismiss) private var dismiss
@@ -32,22 +31,30 @@ struct CaptionSetupSheet: View {
                 }
                 .padding(24)
             }
-            .safeAreaInset(edge: .bottom) { actions }
+            // the buttons stay pinned to the bottom
+            .safeAreaInset(edge: .bottom) {
+                actions
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Not Now") { dismiss() }
+                    Button("Not Now") {
+                        dismiss()
+                    }
                 }
             }
         }
     }
 
+    // download, progress, or turn on, depending on the model
     @ViewBuilder
     private var actions: some View {
         VStack(spacing: 10) {
             switch captions.availability {
             case .needsDownload:
                 Button {
-                    Task { await captions.downloadModel() }
+                    Task {
+                        await captions.downloadModel()
+                    }
                 } label: {
                     Text("Download Speech Model").frame(maxWidth: .infinity)
                 }
@@ -69,6 +76,7 @@ struct CaptionSetupSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
+            // the download failed
             if let message = captions.errorMessage, captions.availability == .needsDownload {
                 Text(message)
                     .font(.footnote)
@@ -82,6 +90,7 @@ struct CaptionSetupSheet: View {
         .background(.bar)
     }
 
+    // one icon, title and explanation
     private func point(_ symbol: String, _ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: symbol)

@@ -1,10 +1,10 @@
 import UIKit
 import WidgetKit
 
-/// Keeps the system Now Playing player (Lock Screen and Control Centre) and
-/// the Home Screen widget in step with the app, cover art included.
+// keeps the lock screen player and home screen widget in step with the app
 @MainActor
 final class SystemPlayerSync {
+    // everything both of them show
     struct Snapshot {
         var state: StreamState = .idle
         var title = ""
@@ -13,12 +13,12 @@ final class SystemPlayerSync {
         var isLiked = false
         var startedAt: Date?
         var duration: TimeInterval?
-        /// From the schedule, for the Home Screen widget.
+        // from the schedule, for the widget
         var showHosts: String?
         var showStart: Date?
         var showEnd: Date?
         var upNext: [RadioWidgetSnapshot.UpcomingShow] = []
-        /// The app's Appearance setting; `nil` follows iOS.
+        // the app's appearance setting; nil follows ios
         var isDark: Bool?
     }
 
@@ -38,8 +38,7 @@ final class SystemPlayerSync {
         push()
     }
 
-    /// Fetches the cover for both players. `nil` (unknown tracks, live shows
-    /// and tracks without a cover) falls back to the station logo.
+    // loads the cover for both; nil falls back to the station logo
     func setArtwork(_ url: URL?) {
         artworkTask?.cancel()
         guard let url else {
@@ -49,17 +48,23 @@ final class SystemPlayerSync {
             return
         }
         artworkTask = Task { [weak self] in
-            guard let self else { return }
+            guard let self else {
+                return
+            }
+            // save it for the widget and load it for the lock screen at the same time
             async let name = widgetArtwork.save(url)
             async let image = ArtworkCache.shared.load(url)
             let (savedName, loadedImage) = await (name, image)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                return
+            }
             artworkFileName = savedName
             artworkImage = loadedImage
             push()
         }
     }
 
+    // sends the latest snapshot to both
     private func push() {
         let snapshot = latest
         pushHomeWidget(snapshot)
@@ -92,7 +97,7 @@ final class SystemPlayerSync {
             upNext: snapshot.upNext,
             isDark: snapshot.isDark
         )
-        // Reloads are budgeted, so only ask when something actually changed.
+        // widget reloads are limited, so only when something changed
         if widget.save() {
             WidgetCenter.shared.reloadTimelines(ofKind: RadioWidgetSnapshot.widgetKind)
         }

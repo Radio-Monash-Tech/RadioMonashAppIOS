@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 
+// every setting, grouped into sections
 struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @AppStorage(RadioPlayerModel.resumeOnLaunchKey) private var resumeOnLaunch = false
@@ -16,16 +17,34 @@ struct SettingsView: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var cacheBytes = URLCache.shared.currentDiskUsage
 
+    // what the live captions row says
     private var captionStatus: String {
         switch player.captions.availability {
-        case .checking: "Checking…"
-        case .unsupported: "Not Available"
-        case .needsDownload: "Not Set Up"
-        case .downloading: "Downloading…"
-        case .ready: player.captions.isEnabled ? "On" : "Off"
+        case .checking:
+            return "Checking…"
+        case .unsupported:
+            return "Not Available"
+        case .needsDownload:
+            return "Not Set Up"
+        case .downloading:
+            return "Downloading…"
+        case .ready:
+            if player.captions.isEnabled {
+                return "On"
+            }
+            return "Off"
         }
     }
 
+    // "dark" or "light", for the appearance footer
+    private var currentAppearance: String {
+        if colorScheme == .dark {
+            return "dark"
+        }
+        return "light"
+    }
+
+    // e.g. "1.0 (12)"
     private var version: String {
         let info = Bundle.main.infoDictionary
         let short = info?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -37,17 +56,21 @@ struct SettingsView: View {
         Form {
             Section {
                 Picker("Appearance", selection: $appearance) {
-                    ForEach(AppearancePreference.allCases) { Text($0.label).tag($0) }
+                    ForEach(AppearancePreference.allCases) { preference in
+                        Text(preference.label).tag(preference)
+                    }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                // The Home Screen widget follows this setting too.
-                .onChange(of: appearance) { player.refreshSystemPlayers() }
+                // the widget follows this too
+                .onChange(of: appearance) {
+                    player.refreshSystemPlayers()
+                }
             } header: {
                 Text("Appearance")
             } footer: {
                 if appearance == .system {
-                    Text("Following iOS appearance,  currently \(colorScheme == .dark ? "dark" : "light").")
+                    Text("Following iOS appearance,  currently \(currentAppearance).")
                 }
             }
 
@@ -64,7 +87,10 @@ struct SettingsView: View {
                         }
                     }
                 }
-                .onChange(of: accent) { player.refreshSystemPlayers() }
+                // the widget uses the accent too
+                .onChange(of: accent) {
+                    player.refreshSystemPlayers()
+                }
             }
 
             Section {
@@ -82,7 +108,7 @@ struct SettingsView: View {
                         ForEach(ColourVisionGroup.allCases) { group in
                             Section(group.title) {
                                 ForEach(group.types) { type in
-                                    // Menus show the second line as a subtitle.
+                                    // menus show the second line as a subtitle
                                     VStack {
                                         Text(type.label)
                                         Text(type.summary)
@@ -100,6 +126,7 @@ struct SettingsView: View {
             } header: {
                 Text("Accessibility")
             } footer: {
+                // ios settings already turned it on
                 if !increaseContrast && contrast == .increased {
                     Text("Already on because Increase Contrast is turned on in iOS Settings.")
                 }
@@ -144,7 +171,9 @@ struct SettingsView: View {
             }
 
             Section {
-                NavigationLink("About Radio Monash") { AboutView() }
+                NavigationLink("About Radio Monash") {
+                    AboutView()
+                }
             } footer: {
                 VStack(spacing: 2) {
                     Text("RADIO MONASH").font(.caption.weight(.semibold)).kerning(1.5)
@@ -158,8 +187,7 @@ struct SettingsView: View {
     }
 }
 
-/// A setting with a dropdown, laid out like the toggle and stepper rows. A
-/// plain menu picker moves its value below the label at larger text sizes.
+// a title, subtitle and dropdown, laid out like the toggle rows
 private struct MenuRow<Menu: View>: View {
     let title: String
     let subtitle: String
@@ -172,11 +200,15 @@ private struct MenuRow<Menu: View>: View {
         self.menu = menu()
     }
 
+    // at the largest text sizes the dropdown goes underneath
+    private var layout: AnyLayout {
+        if typeSize.isAccessibilitySize {
+            return AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+        }
+        return AnyLayout(HStackLayout())
+    }
+
     var body: some View {
-        // At accessibility sizes the value would squeeze the title, so it goes underneath.
-        let layout = typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-            : AnyLayout(HStackLayout())
         layout {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -184,7 +216,9 @@ private struct MenuRow<Menu: View>: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
+            if !typeSize.isAccessibilitySize {
+                Spacer(minLength: 8)
+            }
             menu
                 .pickerStyle(.menu)
                 .labelsHidden()
@@ -193,32 +227,42 @@ private struct MenuRow<Menu: View>: View {
     }
 }
 
-/// Sections of the Colour Vision picker, by which colours each type confuses.
+// colour vision picker sections, by which colours get confused
 private enum ColourVisionGroup: CaseIterable, Identifiable {
     case standard, redGreen, blueYellow, noColour
 
-    var id: Self { self }
+    var id: Self {
+        self
+    }
 
     var title: String {
         switch self {
-        case .standard: ""
-        case .redGreen: "Red–green"
-        case .blueYellow: "Blue–yellow"
-        case .noColour: "No colour"
+        case .standard:
+            ""
+        case .redGreen:
+            "Red–green"
+        case .blueYellow:
+            "Blue–yellow"
+        case .noColour:
+            "No colour"
         }
     }
 
     var types: [ColourVision] {
         switch self {
-        case .standard: [.standard]
-        case .redGreen: [.protanomaly, .protanopia, .deuteranomaly, .deuteranopia]
-        case .blueYellow: [.tritanomaly, .tritanopia]
-        case .noColour: [.monochromacy]
+        case .standard:
+            [.standard]
+        case .redGreen:
+            [.protanomaly, .protanopia, .deuteranomaly, .deuteranopia]
+        case .blueYellow:
+            [.tritanomaly, .tritanopia]
+        case .noColour:
+            [.monochromacy]
         }
     }
 }
 
-/// Menus draw SF Symbols as templates, so the colour is baked into the image.
+// a coloured dot; menus tint symbols, so the colour is baked into the image
 private struct Swatch: View {
     let color: UIColor
 
@@ -230,6 +274,8 @@ private struct Swatch: View {
 }
 
 #Preview {
-    NavigationStack { SettingsView() }
-        .environmentObject(RadioPlayerModel())
+    NavigationStack {
+        SettingsView()
+    }
+    .environmentObject(RadioPlayerModel())
 }

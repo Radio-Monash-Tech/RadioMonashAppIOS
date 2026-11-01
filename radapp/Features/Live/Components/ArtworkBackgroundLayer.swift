@@ -1,5 +1,6 @@
 import SwiftUI
 
+// the blurred cover art behind the live player
 struct ArtworkBackgroundLayer: View {
     let url: URL?
     @Environment(\.colorSchemeContrast) private var contrast
@@ -8,7 +9,7 @@ struct ArtworkBackgroundLayer: View {
         GeometryReader { geo in
             ZStack {
                 Color(.systemBackground)
-                // A blurred cover behind text costs contrast, so keep the background solid.
+                // keep it solid with increased contrast, a blur behind text costs contrast
                 if contrast == .standard {
                     artwork(size: geo.size)
                 }
@@ -17,6 +18,7 @@ struct ArtworkBackgroundLayer: View {
         .ignoresSafeArea()
     }
 
+    // the cover, blurred and faded, with a gradient on top
     @ViewBuilder
     private func artwork(size: CGSize) -> some View {
         CachedArtwork(url: url) { image in

@@ -1,8 +1,10 @@
 import Foundation
 import SwiftData
 
+// a liked song, saved in the database
 @Model
 final class FavouriteTrack {
+    // stops the same song being liked twice
     @Attribute(.unique) var key: String
     var title: String
     var artist: String
@@ -19,11 +21,15 @@ final class FavouriteTrack {
         self.savedAt = savedAt
     }
 
+    // artist and title with an invisible separator, lowercased
     static func key(title: String, artist: String) -> String {
         "\(artist)\u{1F}\(title)".lowercased()
     }
 }
 
 extension PlayedTrack {
-    var favouriteKey: String { FavouriteTrack.key(title: title, artist: artist) }
+    // the key this song would have if liked
+    var favouriteKey: String {
+        FavouriteTrack.key(title: title, artist: artist)
+    }
 }

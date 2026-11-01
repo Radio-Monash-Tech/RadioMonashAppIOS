@@ -2,8 +2,7 @@ import SwiftUI
 import Combine
 import SwiftData
 
-/// The station player the app's views watch. It ties together the stream,
-/// the audio session, the RadioCult feed, liked songs and the system players.
+// the player every screen watches: stream, song info, likes and system players
 @MainActor
 final class RadioPlayerModel: ObservableObject {
 
@@ -11,13 +10,18 @@ final class RadioPlayerModel: ObservableObject {
         didSet {
             trackListening()
             captions.playbackChanged(isPlaying: state == .playing)
-            // Catch up straight away when listening (re)starts.
-            if state == .playing, oldValue != .playing { restartPolling() }
+            // catch up straight away when listening starts again
+            if state == .playing, oldValue != .playing {
+                restartPolling()
+            }
         }
     }
-    // Set by the extensions in this folder, which Swift can't allow with
-    // `private(set)` across files. Only the player should change these.
-    @Published var nowPlaying: NowPlaying = .offAir { didSet { updateCaptions() } }
+    // not private(set), because the extension files set them; only the player should
+    @Published var nowPlaying: NowPlaying = .offAir {
+        didSet {
+            updateCaptions()
+        }
+    }
     @Published var liveShow: LiveShow? {
         didSet {
             trackListening()
@@ -28,10 +32,12 @@ final class RadioPlayerModel: ObservableObject {
     @Published var connectivity: Connectivity = .good
     @Published var isCurrentTrackLiked = false
     @Published var sleepTimerEndsAt: Date?
-    var isMuted = false { didSet { stream.isMuted = isMuted } }
-    // Stays at 1 on devices, where the phone's own volume sets the level.
-    // Only the Simulator's stand-in volume slider changes it, and the last
-    // value is remembered so a relaunch doesn't start at full volume.
+    var isMuted = false {
+        didSet {
+            stream.isMuted = isMuted
+        }
+    }
+    // only the simulator's slider changes this; remembered between launches
     var volume: Float = UserDefaults.standard.object(forKey: RadioPlayerModel.volumeKey) as? Float ?? 1 {
         didSet {
             stream.volume = volume
@@ -46,6 +52,7 @@ final class RadioPlayerModel: ObservableObject {
     let audioSession = RadioAudioSession()
     let systemPlayers = SystemPlayerSync()
     let captions: CaptionCoordinator
+    // nil without a database, e.g. in previews
     let favourites: FavouriteStore?
     let schedule: ScheduleStore?
     let listening: ListeningTracker?
@@ -54,6 +61,7 @@ final class RadioPlayerModel: ObservableObject {
     var pollTask: Task<Void, Never>?
     var foregroundObserver: AnyCancellable?
     var sleepTimerTask: Task<Void, Never>?
+    // a call paused us, so play again when it ends
     var resumeAfterInterruption = false
     var isSessionPrepared = false
 
@@ -63,45 +71,68 @@ final class RadioPlayerModel: ObservableObject {
         listening = modelContext.map(ListeningTracker.init)
         captions = CaptionCoordinator()
         stream.volume = volume
-        stream.onItemReady = { [weak self] in self?.captions.playerItemReady($0) }
+        // captions attach to each new connection
+        stream.onItemReady = { [weak self] item in
+            self?.captions.playerItemReady(item)
+        }
         stream.onStateChange = { [weak self] state in
             self?.state = state
             self?.refreshSystemPlayers()
         }
-        audioSession.onEvent = { [weak self] in self?.handle($0) }
-        // Wired up front: a widget button can launch the app
-        // in the background, before any view has appeared to prepare the session.
+        audioSession.onEvent = { [weak self] event in
+            self?.handle(event)
+        }
+        // set up now, since a widget button can launch the app before any screen appears
         WidgetActions.togglePlayback = { [weak self] in
             self?.prepareSession()
             self?.togglePlayback()
         }
-        WidgetActions.toggleLike = { [weak self] in self?.toggleLike() }
+        WidgetActions.toggleLike = { [weak self] in
+            self?.toggleLike()
+        }
     }
 
-    /// While a show is on air its name stands in for the track; otherwise
-    /// the song and artist show.
+    // the show's name while one is on, otherwise the song
     var displayTitle: String {
         liveShow?.name ?? nowPlaying.title
     }
 
+    // the artist, hidden while a show is on
     var displayArtist: String? {
-        liveShow == nil ? nowPlaying.artist : nil
+        if liveShow == nil {
+            return nowPlaying.artist
+        }
+        return nil
     }
 
-    /// RadioCult named the song on air, so it can be liked or looked up.
-    var isIdentifiedTrack: Bool { nowPlaying != .offAir }
-    /// The station logo stands in for cover art while a show is on air, when
-    /// no track is identified, and when RadioCult has no cover for the track.
-    var showsStationLogo: Bool { liveShow != nil || !isIdentifiedTrack || nowPlaying.artworkURL == nil }
-    var canLikeCurrentTrack: Bool { favourites != nil && isIdentifiedTrack }
-    var isBusy: Bool { state == .connecting }
-    var isActive: Bool { state == .playing || state == .connecting }
+    // radiocult named the song, so it can be liked or looked up
+    var isIdentifiedTrack: Bool {
+        nowPlaying != .offAir
+    }
 
-    /// Tells Live Captions what RadioCult says is on, plus names it should
-    /// expect to hear: the show, today's shows and hosts, and recent artists.
+    // the logo during a show, with no song named, or with no cover art
+    var showsStationLogo: Bool {
+        liveShow != nil || !isIdentifiedTrack || nowPlaying.artworkURL == nil
+    }
+
+    var canLikeCurrentTrack: Bool {
+        favourites != nil && isIdentifiedTrack
+    }
+
+    var isBusy: Bool {
+        state == .connecting
+    }
+
+    var isActive: Bool {
+        state == .playing || state == .connecting
+    }
+
+    // tells captions what's on, and names it should expect to hear
     func updateCaptions() {
         var names = ["Radio Monash"]
-        if let liveShow { names.append(liveShow.name) }
+        if let liveShow {
+            names.append(liveShow.name)
+        }
         if let schedule {
             for show in schedule.shows(on: .now) {
                 names.append(show.series.title)
@@ -109,8 +140,11 @@ final class RadioPlayerModel: ObservableObject {
             }
         }
         names += history.prefix(20).map(\.artist)
+        // drop empty names and repeats
         var seen = Set<String>()
-        let vocabulary = names.filter { !$0.isEmpty && seen.insert($0).inserted }
+        let vocabulary = names.filter { name in
+            !name.isEmpty && seen.insert(name).inserted
+        }
         captions.stationChanged(liveShow: liveShow, nowPlaying: nowPlaying, vocabulary: vocabulary)
     }
 }

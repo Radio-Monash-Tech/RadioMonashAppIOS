@@ -1,8 +1,9 @@
 import SwiftUI
 
+// the big cover art with a soft pulsing glow
 struct GlowingArtwork: View {
     let url: URL?
-    /// While no track is identified the cover shows the station logo, not track art.
+    // the station logo instead of cover art
     var showsStationLogo = false
     let isBusy: Bool
     let onDoubleTap: () -> Void
@@ -24,10 +25,11 @@ struct GlowingArtwork: View {
                     ArtworkImage(url: url)
                 }
             }
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
-                .onTapGesture(count: 2, perform: onDoubleTap)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
+            .onTapGesture(count: 2, perform: onDoubleTap)
 
+            // dimmed with a spinner while connecting
             if isBusy {
                 RoundedRectangle(cornerRadius: 20)
                     .fill(Color.black.opacity(0.4))
@@ -39,13 +41,15 @@ struct GlowingArtwork: View {
         .aspectRatio(1, contentMode: .fit)
         .padding(.horizontal, 32)
         .onAppear {
-            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) { glow = true }
+            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
+                glow = true
+            }
         }
         .accessibilityLabel("Now playing artwork. Double-tap to open this track in a music app.")
     }
 }
 
-// A failed stream shows only in the OFFLINE badge; the play button retries.
+// the title and artist under the artwork
 struct MetadataDisplay: View {
     let title: String
     let artist: String?

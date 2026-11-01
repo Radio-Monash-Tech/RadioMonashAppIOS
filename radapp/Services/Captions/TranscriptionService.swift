@@ -1,12 +1,13 @@
 import AVFoundation
 import Speech
 
-/// Owns the on-device speech analyser. Buffers go in through `feed`, and
-/// provisional (volatile) and finished (final) text comes out of `updates`.
+// apple's on-device speech recognition: audio in through feed, text out through updates
 @available(iOS 26, *)
 actor TranscriptionService {
     enum Update: Sendable {
+        // words still coming in
         case volatile(String)
+        // a finished line
         case final(String)
     }
 
@@ -20,11 +21,9 @@ actor TranscriptionService {
         (updates, updatesContinuation) = AsyncStream.makeStream(of: Update.self)
     }
 
-    /// Starts the analyser and returns the audio format it wants.
-    /// `vocabulary` (show, host and band names) helps it spell them right.
+    // starts recognising and returns the audio format it wants; vocabulary helps spell names
     func start(locale: Locale, vocabulary: [String]) async throws -> AVAudioFormat {
-        // Live results as words arrive, with swearing masked: song lyrics in
-        // particular would otherwise print slurs on screen.
+        // live results as words arrive, with swearing masked
         let transcriber = SpeechTranscriber(
             locale: locale,
             transcriptionOptions: [.etiquetteReplacements],
@@ -45,15 +44,20 @@ actor TranscriptionService {
         let (inputSequence, input) = AsyncStream.makeStream(of: AnalyzerInput.self)
         try await analyzer.start(inputSequence: inputSequence)
 
+        // pass each result on as an update
         let updates = updatesContinuation
         resultsTask = Task {
             do {
                 for try await result in transcriber.results {
                     let text = String(result.text.characters)
-                    updates.yield(result.isFinal ? .final(text) : .volatile(text))
+                    if result.isFinal {
+                        updates.yield(.final(text))
+                    } else {
+                        updates.yield(.volatile(text))
+                    }
                 }
             } catch {
-                // The analyser stopping ends the results; nothing to report.
+                // the analyser stopping ends the results; nothing to report
             }
         }
         self.analyzer = analyzer
@@ -65,7 +69,7 @@ actor TranscriptionService {
         input?.yield(AnalyzerInput(buffer: buffer))
     }
 
-    /// Turns whatever is still provisional into final text, for when the talk stops.
+    // turns whatever is still in progress into final text
     func flush() async {
         try? await analyzer?.finalize(through: nil)
     }
@@ -86,7 +90,8 @@ enum CaptionError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unsupportedAudio: "Live Captions can't read this stream's audio."
+        case .unsupportedAudio:
+            "Live Captions can't read this stream's audio."
         }
     }
 }

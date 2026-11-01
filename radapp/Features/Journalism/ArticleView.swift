@@ -1,20 +1,29 @@
 import SwiftUI
 import SwiftData
 
+// one article, drawn natively from its html
 struct ArticleView: View {
     let article: Article
 
+    // the local database, for saving and downloading
     @Environment(\.modelContext) private var modelContext
+    // every saved article, kept up to date by swiftdata
     @Query private var savedArticles: [SavedArticle]
     @AppStorage("readerTextSize") private var textSize: ReaderTextSize = .standard
+    // nil until the html has been parsed
     @State private var blocks: [ArticleBlock]?
+    // the photo open full screen, if any
     @State private var viewerImage: ViewerImage?
     @State private var isDownloading = false
     @State private var downloadFailed = false
+    // links each photo to the full-screen viewer for the zoom animation
     @Namespace private var imageNamespace
 
+    // this article's saved copy, if it has been saved
     private var savedCopy: SavedArticle? {
-        savedArticles.first { $0.articleID == article.id }
+        savedArticles.first { saved in
+            saved.articleID == article.id
+        }
     }
 
     var body: some View {
@@ -25,6 +34,7 @@ struct ArticleView: View {
                     Text(article.title)
                         .font(.system(.title, design: .serif, weight: .bold))
 
+                    // author initials, name, date and read time
                     HStack(spacing: 10) {
                         Text(article.authorInitials)
                             .font(.caption.weight(.semibold))
@@ -37,6 +47,7 @@ struct ArticleView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    // voiceover reads the byline as one item
                     .accessibilityElement(children: .combine)
 
                     if let blocks {
@@ -45,6 +56,7 @@ struct ArticleView: View {
                                 viewerImage = ViewerImage(id: index, url: url)
                             }
                         }
+                        // the reader's text size from the menu
                         .dynamicTypeSize(textSize.dynamicTypeSize)
                     } else {
                         ProgressView()
@@ -58,13 +70,17 @@ struct ArticleView: View {
             .readableWidthInLandscape()
         }
         .navigationBarTitleDisplayMode(.inline)
+        // tapped photo zooms open full screen
         .fullScreenCover(item: $viewerImage) { image in
             ImageViewer(url: image.url)
                 .colourVisionFilter()
                 .navigationTransition(.zoom(sourceID: image.id, in: imageNamespace))
         }
+        // parse the html once
         .task {
-            guard blocks == nil else { return }
+            guard blocks == nil else {
+                return
+            }
             blocks = contentBlocks()
         }
         .alert("Couldn't Download", isPresented: $downloadFailed) {
@@ -74,6 +90,7 @@ struct ArticleView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                // text size menu
                 Menu {
                     Picker("Text Size", selection: $textSize) {
                         ForEach(ReaderTextSize.allCases) { size in
@@ -84,11 +101,15 @@ struct ArticleView: View {
                     Label("Text Size", systemImage: "textformat.size")
                 }
 
+                // save or unsave
                 Button(action: toggleSaved) {
                     Label(savedCopy == nil ? "Save Article" : "Remove from Saved",
                           systemImage: savedCopy == nil ? "bookmark" : "bookmark.fill")
                 }
-                .sensoryFeedback(.success, trigger: savedCopy != nil) { _, isSaved in isSaved }
+                // haptic tap when it becomes saved, not when removed
+                .sensoryFeedback(.success, trigger: savedCopy != nil) { _, isSaved in
+                    isSaved
+                }
 
                 downloadButton
 
@@ -109,6 +130,7 @@ struct ArticleView: View {
         modelContext.toggleSaved(article, existing: savedCopy)
     }
 
+    // spinner while downloading, remove when downloaded, download otherwise
     @ViewBuilder
     private var downloadButton: some View {
         if isDownloading {
@@ -130,17 +152,22 @@ struct ArticleView: View {
             } label: {
                 Label("Download for Offline", systemImage: "arrow.down.circle")
             }
-            .sensoryFeedback(.success, trigger: savedCopy?.isDownloaded == true) { _, isDownloaded in isDownloaded }
+            // haptic tap when the download finishes
+            .sensoryFeedback(.success, trigger: savedCopy?.isDownloaded == true) { _, isDownloaded in
+                isDownloaded
+            }
         }
     }
 }
 
+// the photo to show full screen
 private struct ViewerImage: Identifiable {
-    /// The block index, which doubles as the zoom transition's source ID.
+    // the block index, also the zoom animation's source id
     let id: Int
     let url: URL
 }
 
+// draws one ArticleBlock
 private struct ArticleBlockView: View {
     let block: ArticleBlock
     let index: Int
@@ -155,9 +182,10 @@ private struct ArticleBlockView: View {
                 .lineSpacing(5)
         case .heading(let text, let level):
             Text(text)
-                .font(.system(level == 1 ? .title2 : level == 2 ? .title3 : .headline, design: .serif, weight: .bold))
+                .font(.system(headingStyle(level), design: .serif, weight: .bold))
                 .padding(.top, 8)
         case .quote(let text):
+            // italic with a coloured bar on the left
             Text(text)
                 .font(.system(.title3, design: .serif))
                 .italic()
@@ -167,6 +195,7 @@ private struct ArticleBlockView: View {
                 }
         case .listItem(let text, let marker):
             HStack(alignment: .firstTextBaseline, spacing: 8) {
+                // same-width digits so numbers line up
                 Text(marker).monospacedDigit()
                 Text(text)
             }
@@ -174,7 +203,9 @@ private struct ArticleBlockView: View {
             .lineSpacing(5)
         case .image(let url, let caption):
             VStack(alignment: .leading, spacing: 6) {
-                Button { onImageTap(url) } label: {
+                Button {
+                    onImageTap(url)
+                } label: {
                     CachedArtwork(url: url.squarespaceSized(1000)) { image in
                         image.resizable().scaledToFit()
                     } placeholder: {
@@ -183,12 +214,14 @@ private struct ArticleBlockView: View {
                             .frame(height: 220)
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    // where the full-screen zoom starts from
                     .matchedTransitionSource(id: index, in: imageNamespace)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Image")
                 .accessibilityHint("Opens the image full screen")
                 if let caption {
+                    // long captions are really body text, short ones are small and grey
                     if caption.characters.count > 140 {
                         Text(caption)
                             .font(.system(.body, design: .serif))
@@ -204,27 +237,52 @@ private struct ArticleBlockView: View {
             .padding(.vertical, 4)
         }
     }
+
+    // level 1 is the biggest
+    private func headingStyle(_ level: Int) -> Font.TextStyle {
+        switch level {
+        case 1:
+            .title2
+        case 2:
+            .title3
+        default:
+            .headline
+        }
+    }
 }
 
+// the reader's text size choices
 enum ReaderTextSize: String, CaseIterable, Identifiable {
     case small, standard, large, extraLarge
-    var id: String { rawValue }
+
+    var id: String {
+        rawValue
+    }
 
     var label: String {
         switch self {
-        case .small: "Small"
-        case .standard: "Standard"
-        case .large: "Large"
-        case .extraLarge: "Extra Large"
+        case .small:
+            "Small"
+        case .standard:
+            "Standard"
+        case .large:
+            "Large"
+        case .extraLarge:
+            "Extra Large"
         }
     }
 
+    // the dynamic type size each choice uses
     var dynamicTypeSize: DynamicTypeSize {
         switch self {
-        case .small: .medium
-        case .standard: .large
-        case .large: .xLarge
-        case .extraLarge: .xxLarge
+        case .small:
+            .medium
+        case .standard:
+            .large
+        case .large:
+            .xLarge
+        case .extraLarge:
+            .xxLarge
         }
     }
 }

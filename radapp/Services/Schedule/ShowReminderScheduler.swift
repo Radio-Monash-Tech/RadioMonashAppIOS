@@ -1,38 +1,48 @@
 import Foundation
 import UserNotifications
 
-/// Schedules a local notification ten minutes before each upcoming episode
-/// of a followed show. Only the loaded week is known, so reminders are
-/// rebuilt whenever the schedule, the followed list or the setting changes.
+// a notification 10 minutes before each episode of a followed show, rebuilt whenever anything changes
 enum ShowReminderScheduler {
     static let enabledKey = "showReminders"
     static let leadTime: TimeInterval = 10 * 60
 
     private static let identifierPrefix = "show-reminder."
-    /// iOS keeps at most 64 pending notifications per app.
+    // ios keeps at most 64 waiting notifications per app
     private static let maxPending = 60
 
     static func sync(shows: [ScheduledShow], followed: StoredIDs, isEnabled: Bool) async {
+        // remove every old reminder first
         let center = UNUserNotificationCenter.current()
         let stale = await center.pendingNotificationRequests()
             .map(\.identifier)
-            .filter { $0.hasPrefix(identifierPrefix) }
+            .filter { identifier in
+                identifier.hasPrefix(identifierPrefix)
+            }
         center.removePendingNotificationRequests(withIdentifiers: stale)
 
-        guard isEnabled else { return }
-        let upcoming = shows.filter {
-            followed.contains($0.series.id) && $0.start.addingTimeInterval(-leadTime) > .now
+        guard isEnabled else {
+            return
+        }
+        // followed episodes whose reminder time hasn't passed
+        let upcoming = shows.filter { show in
+            followed.contains(show.series.id) && show.start.addingTimeInterval(-leadTime) > .now
         }
         guard !upcoming.isEmpty,
               (try? await center.requestAuthorization(options: [.alert, .sound])) == true
-        else { return }
+        else {
+            return
+        }
 
         for show in upcoming.prefix(maxPending) {
             let content = UNMutableNotificationContent()
             content.title = "\(show.series.title) starts in 10 minutes"
-            content.body = [show.series.hostLine.map { "with \($0)" }, show.timeRange]
-                .compactMap(\.self)
-                .joined(separator: " · ")
+            // "with Alex · 09:00 – 10:00"
+            var parts: [String] = []
+            if let hosts = show.series.hostLine {
+                parts.append("with \(hosts)")
+            }
+            parts.append(show.timeRange)
+            content.body = parts.joined(separator: " · ")
             content.sound = .default
             content.threadIdentifier = "show-reminders"
 
@@ -45,7 +55,7 @@ enum ShowReminderScheduler {
     }
 }
 
-/// Lets reminders show as banners while the app is open.
+// lets reminders show as banners while the app is open
 final class ForegroundNotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
     static let shared = ForegroundNotificationPresenter()
 

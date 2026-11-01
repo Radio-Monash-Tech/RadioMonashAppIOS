@@ -1,8 +1,6 @@
 import Foundation
 
-// Decodable shapes for GET /api/station/:stationId/schedule/live, plus their
-// mapping into the app's domain models.
-
+// the json from schedule/live
 struct ScheduleLiveResponse: Decodable {
     let success: Bool
     let result: LiveResult
@@ -11,9 +9,7 @@ struct ScheduleLiveResponse: Decodable {
 struct LiveResult: Decodable {
     let status: LiveStatus
     let metadata: LiveMetadata?
-    /// Only populated when `status == .schedule`; RadioCult returns "Off Air"
-    /// (a bare string) or a default-playlist object for the other statuses,
-    /// so we only attempt to decode it as an `Event` in that case.
+    // only read when a show is scheduled; otherwise radiocult sends a plain string
     let show: LiveShowEvent?
 
     private enum CodingKeys: String, CodingKey {
@@ -24,9 +20,11 @@ struct LiveResult: Decodable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         status = try container.decode(LiveStatus.self, forKey: .status)
         metadata = try container.decodeIfPresent(LiveMetadata.self, forKey: .metadata)
-        show = status == .schedule
-            ? try container.decodeIfPresent(LiveShowEvent.self, forKey: .content)
-            : nil
+        if status == .schedule {
+            show = try container.decodeIfPresent(LiveShowEvent.self, forKey: .content)
+        } else {
+            show = nil
+        }
     }
 }
 
@@ -34,19 +32,19 @@ enum LiveStatus: String, Decodable {
     case schedule, offAir, defaultPlaylist
 }
 
-/// The RadioCult "Event" object, trimmed to what the player needs.
+// radiocult's show, cut down to what the player needs
 struct LiveShowEvent: Decodable {
     let title: String
     let artistIds: [String]?
     let media: Media?
 
     struct Media: Decodable {
-        /// `live` for a presenter broadcasting in, `playlist` for library tracks;
-        /// other values are pre-recorded.
+        // "live" for a presenter, "playlist" for library songs, anything else is pre-recorded
         let type: String?
     }
 }
 
+// the song playing
 struct LiveMetadata: Decodable {
     let title: String
     let artist: String?
@@ -54,7 +52,7 @@ struct LiveMetadata: Decodable {
     let duration: Double?
     let playoutStartUnixTimestamp: Double?
     let artwork: ArtworkVariants?
-    /// Set only when the station's automated playlist is playing a library track.
+    // only set when the automated playlist plays a library song
     let trackId: String?
 
     private enum CodingKeys: String, CodingKey {
@@ -66,7 +64,7 @@ struct LiveMetadata: Decodable {
         title = try container.decode(String.self, forKey: .title)
         artist = try container.decodeIfPresent(String.self, forKey: .artist)
         album = try container.decodeIfPresent(String.self, forKey: .album)
-        // Live shows report `"duration": "unknown"` rather than a number.
+        // live shows send "unknown" instead of a number
         duration = try? container.decodeIfPresent(Double.self, forKey: .duration)
         playoutStartUnixTimestamp = try container.decodeIfPresent(Double.self, forKey: .playoutStartUnixTimestamp)
         artwork = try container.decodeIfPresent(ArtworkVariants.self, forKey: .artwork)
@@ -75,31 +73,47 @@ struct LiveMetadata: Decodable {
 }
 
 extension ScheduleLiveResponse {
+    // the song and show, in the app's own types
     func toNowPlaying() -> (track: NowPlaying, show: LiveShow?) {
-        let show = onAirShow.map { LiveShow(name: $0.title, host: nil, endsAt: nil) }
-        // During a live show the stream sends either nothing or the show's
-        // own name with no artist; neither is a real track, so keep only the show.
-        guard let metadata, show == nil || metadata.artist != nil else { return (.offAir, show) }
+        var show: LiveShow?
+        if let onAirShow {
+            show = LiveShow(name: onAirShow.title, host: nil, endsAt: nil)
+        }
+        // during a live show the "song" is nothing or the show's name, so keep only the show
+        guard let metadata, show == nil || metadata.artist != nil else {
+            return (.offAir, show)
+        }
+        var startedAt: Date?
+        if let timestamp = metadata.playoutStartUnixTimestamp {
+            startedAt = Date(timeIntervalSince1970: timestamp)
+        }
         let track = NowPlaying(
             title: metadata.title,
             artist: metadata.artist ?? "Radio Monash",
             artworkURL: metadata.artwork?.best(),
-            startedAt: metadata.playoutStartUnixTimestamp.map(Date.init(timeIntervalSince1970:)),
+            startedAt: startedAt,
             duration: metadata.duration
         )
         return (track, show)
     }
 
-    private var metadata: LiveMetadata? { result.metadata }
+    private var metadata: LiveMetadata? {
+        result.metadata
+    }
 
-    /// RadioCult reports a show from its scheduled start, but a live slot isn't on air
-    /// until the presenter connects; until then the playlist keeps playing library tracks.
-    /// A playlist show has no presenter at all, just library tracks with their covers,
-    /// so it plays like music, as on the website.
+    // the show, only once a presenter is actually on; playlist shows count as music
     private var onAirShow: LiveShowEvent? {
-        guard let show = result.show else { return nil }
-        if show.media?.type == "playlist" { return nil }
+        guard let show = result.show else {
+            return nil
+        }
+        if show.media?.type == "playlist" {
+            return nil
+        }
+        // a live slot still playing library songs means the presenter hasn't connected yet
         let awaitingPresenter = show.media?.type == "live" && metadata?.trackId != nil
-        return awaitingPresenter ? nil : show
+        if awaitingPresenter {
+            return nil
+        }
+        return show
     }
 }

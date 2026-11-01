@@ -1,16 +1,16 @@
 import SwiftUI
 
-// "Listen on" bottom sheet, styled to match the Android reference app's
-// `PlatformLinksBottomSheet` (dark card, platform badges). Apple Music opens
-// the exact song; every other service goes through the song's Song.link page.
+// "listen on" sheet: apple music for the exact song, song.link for the rest
 struct PlatformSheet: View {
     let track: NowPlaying
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
     @State private var lookup = Lookup.loading
+    // bumped by try again to re-run the lookup
     @State private var attempt = 0
 
+    // where the itunes lookup is up to
     private enum Lookup {
         case loading
         case found(ITunesTrack)
@@ -44,11 +44,16 @@ struct PlatformSheet: View {
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
+        // find the song on itunes
         .task(id: attempt) {
             lookup = .loading
             do {
                 let match = try await ITunesClient.shared.track(title: track.title, artist: track.artist, duration: track.duration)
-                lookup = match.map(Lookup.found) ?? .notFound
+                if let match {
+                    lookup = .found(match)
+                } else {
+                    lookup = .notFound
+                }
             } catch {
                 lookup = .failed
             }
@@ -63,6 +68,7 @@ struct PlatformSheet: View {
                 .padding(.top, 48)
         case .found(let match):
             VStack(spacing: 12) {
+                // opens the apple music app
                 rowButton {
                     openURL(match.trackViewURL)
                     dismiss()
@@ -71,7 +77,7 @@ struct PlatformSheet: View {
                         Image("AppleMusicLogo").resizable().scaledToFit()
                     }
                 }
-                // Kept in the app; the page's platform links still hand off to their apps.
+                // opens song.link in the app; its links still open other apps
                 rowButton {
                     SystemPresenter.openInApp(match.songLinkURL)
                 } label: {
@@ -92,7 +98,9 @@ struct PlatformSheet: View {
             } description: {
                 Text("Check your connection and try again.")
             } actions: {
-                Button("Try Again") { attempt += 1 }
+                Button("Try Again") {
+                    attempt += 1
+                }
             }
         }
     }
@@ -105,6 +113,7 @@ struct PlatformSheet: View {
     }
 }
 
+// one service: icon, name, optional subtitle and a chevron
 private struct PlatformRow<Icon: View>: View {
     let title: String
     var subtitle: String?
@@ -114,7 +123,7 @@ private struct PlatformRow<Icon: View>: View {
         HStack(spacing: 16) {
             icon
                 .frame(width: 48, height: 48)
-                // The row's text already names the platform.
+                // the text already names the service
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -140,7 +149,7 @@ private struct PlatformRow<Icon: View>: View {
     }
 }
 
-// A 2×2 grid of service logos standing in for Song.link, which has no app icon of its own.
+// 2x2 grid of logos, since song.link has no icon of its own
 private struct OtherPlatformsBadge: View {
     var body: some View {
         Grid(horizontalSpacing: 4, verticalSpacing: 4) {

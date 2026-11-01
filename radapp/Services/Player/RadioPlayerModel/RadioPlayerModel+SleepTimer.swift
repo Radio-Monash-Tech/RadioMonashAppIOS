@@ -1,20 +1,24 @@
 import Foundation
 
-// Stopping the stream at a chosen time.
+// stopping the stream at a chosen time
 extension RadioPlayerModel {
-    /// When the on-air show ends, if the schedule knows it; offered as a sleep timer option.
+    // when the show on air ends, offered as a timer option
     var currentShowEndsAt: Date? {
         schedule?.onAir()?.end
     }
 
-    /// Stops the stream at `date`. Passing `nil` cancels the timer.
+    // stops the stream at date; nil cancels the timer
     func setSleepTimer(endingAt date: Date?) {
         sleepTimerTask?.cancel()
         sleepTimerEndsAt = date
-        guard let date else { return }
+        guard let date else {
+            return
+        }
         sleepTimerTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(max(0, date.timeIntervalSinceNow)))
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                return
+            }
             self?.sleepTimerFired()
         }
     }
@@ -22,6 +26,8 @@ extension RadioPlayerModel {
     private func sleepTimerFired() {
         sleepTimerEndsAt = nil
         sleepTimerTask = nil
-        if isActive { stop() }
+        if isActive {
+            stop()
+        }
     }
 }

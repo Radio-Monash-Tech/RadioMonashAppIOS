@@ -1,8 +1,10 @@
 import SwiftUI
 
+// about radio monash: intro, features, contact and acknowledgement
 struct AboutView: View {
     @Environment(\.openURL) private var openURL
 
+    // each tab and what it does
     private let whatWeDo: [(String, String)] = [
         ("Live", "Stream Radio Monash with live captions for lyrics and hosts"),
         ("Schedule", "See what is on and get a reminder before shows you follow"),
@@ -32,11 +34,11 @@ struct AboutView: View {
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        // always dark, to match the logo
         .preferredColorScheme(.dark)
     }
 
-    // MARK: Hero
-
+    // the station logo fading into black
     private var hero: some View {
         ZStack(alignment: .bottomLeading) {
             Image("StationLogo")
@@ -57,13 +59,15 @@ struct AboutView: View {
         .frame(height: 330)
     }
 
+    // the badge, title, description and website button
     private var intro: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("SINCE 1972")
                 .font(.system(size: 10.5, weight: .bold))
                 .kerning(1)
                 .foregroundStyle(Color.radPinkText)
-                .padding(.horizontal, 10).padding(.vertical, 5)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
                 .background(Color.radPink.opacity(0.18), in: Capsule())
                 .overlay(Capsule().stroke(Color.radPink.opacity(0.5), lineWidth: 1))
 
@@ -98,11 +102,11 @@ struct AboutView: View {
             .padding(.top, 18)
             .accessibilityHint("Opens in Safari")
         }
-        .padding(.top, -98) // overlaps the hero fade, as in the design
+        // pulled up over the hero's fade
+        .padding(.top, -98)
     }
 
-    // MARK: What we do (plain list, not tappable)
-
+    // a pink dot, the tab name and what it does; not tappable
     private var whatWeDoList: some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(whatWeDo, id: \.0) { title, detail in
@@ -110,7 +114,10 @@ struct AboutView: View {
                     Circle()
                         .fill(Color.radPink)
                         .frame(width: 6, height: 6)
-                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 4 }
+                        // sits level with the text
+                        .alignmentGuide(.firstTextBaseline) { dimensions in
+                            dimensions[.bottom] + 4
+                        }
                     (Text(title).fontWeight(.semibold).foregroundStyle(.white)
                      + Text(" : " + detail).foregroundStyle(.white.opacity(0.85)))
                         .font(.callout)
@@ -121,8 +128,6 @@ struct AboutView: View {
         .padding(.horizontal, 2)
     }
 
-    // MARK: Contact
-
     private var contactCard: some View {
         VStack(spacing: 0) {
             contactRow("Email", "info@radiomonash.online", "mailto:info@radiomonash.online")
@@ -132,8 +137,11 @@ struct AboutView: View {
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
+    // tapping opens mail or the phone app
     private func contactRow(_ label: String, _ value: String, _ link: String) -> some View {
-        Button { openURL(URL(string: link)!) } label: {
+        Button {
+            openURL(URL(string: link)!)
+        } label: {
             HStack {
                 Text(label).foregroundStyle(.white)
                 Spacer()
@@ -143,8 +151,6 @@ struct AboutView: View {
             .frame(minHeight: 46)
         }
     }
-
-    // MARK: Acknowledgement, footer
 
     private var acknowledgement: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -168,6 +174,7 @@ struct AboutView: View {
             .padding(.top, 22)
     }
 
+    // e.g. "1.0", from the app's info.plist
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
     }
@@ -182,11 +189,14 @@ struct AboutView: View {
     }
 }
 
+// the station's pink, and a lighter one readable as text
 private extension Color {
     static let radPink = Color(red: 1.0, green: 0.216, blue: 0.373)
     static let radPinkText = Color(red: 1.0, green: 0.42, blue: 0.525)
 }
 
 #Preview {
-    NavigationStack { AboutView() }
+    NavigationStack {
+        AboutView()
+    }
 }

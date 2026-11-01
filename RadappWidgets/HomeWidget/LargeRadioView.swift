@@ -1,15 +1,18 @@
 import SwiftUI
 import WidgetKit
 
-/// The large widget: the medium layout, plus when the show ends and the
-/// rest of today's schedule.
+// the large widget: the medium layout, plus when the show ends and the rest of today
 struct LargeRadioView: View {
     let entry: RadioEntry
-    private var s: RadioWidgetSnapshot { entry.snapshot }
+    private var s: RadioWidgetSnapshot {
+        entry.snapshot
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if s.isOnAir { StationLabel() }
+            if s.isOnAir {
+                StationLabel()
+            }
 
             HStack(alignment: .top, spacing: 13) {
                 Cover(image: entry.artwork, corner: 13)
@@ -34,9 +37,13 @@ struct LargeRadioView: View {
             }
             .padding(.top, s.isOnAir ? 12 : 0)
 
-            if s.isOnAir { showTiming.padding(.top, 14) }
+            if s.isOnAir {
+                showTiming.padding(.top, 14)
+            }
 
-            Divider().padding(.top, 14).padding(.bottom, 10)
+            Divider()
+                .padding(.top, 14)
+                .padding(.bottom, 10)
 
             Text("Up next")
                 .font(.system(size: 13, weight: .semibold))
@@ -49,7 +56,10 @@ struct LargeRadioView: View {
                     .foregroundStyle(.tertiary)
             }
             ForEach(Array(upNext.enumerated()), id: \.element) { index, show in
-                if index > 0 { Divider() }
+                // a line between shows
+                if index > 0 {
+                    Divider()
+                }
                 HStack(spacing: 12) {
                     Text(show.start, format: .dateTime.hour().minute())
                         .font(.system(size: 14, weight: .semibold))
@@ -81,10 +91,15 @@ struct LargeRadioView: View {
         .containerBackground(widgetBackground(s), for: .widget)
     }
 
+    // the next three shows that haven't started
     private var upNext: [RadioWidgetSnapshot.UpcomingShow] {
-        Array(s.upNext.filter { $0.start > entry.date }.prefix(3))
+        let notStarted = s.upNext.filter { show in
+            show.start > entry.date
+        }
+        return Array(notStarted.prefix(3))
     }
 
+    // the show's name and "until 10:00 am"
     private var showTiming: some View {
         HStack {
             Text(s.showName ?? s.title)

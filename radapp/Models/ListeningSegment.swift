@@ -1,9 +1,7 @@
 import Foundation
 import SwiftData
 
-/// A stretch of time the stream played without the show changing. One
-/// listening session is every segment sharing a `sessionID`, so a show
-/// changing over or a dropped connection doesn't count as a new session.
+// a stretch of listening during one show; segments sharing a session id are one listen
 @Model
 final class ListeningSegment {
     var sessionID: UUID
@@ -12,6 +10,7 @@ final class ListeningSegment {
     var showName: String?
     var seriesID: String?
 
+    // starts with no length; the tracker moves end on as you listen
     init(sessionID: UUID, start: Date, showName: String?, seriesID: String?) {
         self.sessionID = sessionID
         self.start = start
@@ -20,10 +19,14 @@ final class ListeningSegment {
         self.seriesID = seriesID
     }
 
-    var duration: TimeInterval { max(0, end.timeIntervalSince(start)) }
+    var duration: TimeInterval {
+        max(0, end.timeIntervalSince(start))
+    }
 
-    /// Seconds of this segment that fall inside `interval`.
+    // seconds of this segment inside the interval
     func overlap(with interval: DateInterval) -> TimeInterval {
-        max(0, min(end, interval.end).timeIntervalSince(max(start, interval.start)))
+        let overlapStart = max(start, interval.start)
+        let overlapEnd = min(end, interval.end)
+        return max(0, overlapEnd.timeIntervalSince(overlapStart))
     }
 }

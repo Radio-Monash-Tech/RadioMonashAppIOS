@@ -1,24 +1,30 @@
 import CryptoKit
 import UIKit
 
-/// Saves track covers where the Home Screen widget can read them.
+// saves the song's cover where the home screen widget can read it
 @MainActor
 final class WidgetArtworkStore {
-    /// Big enough for the full-bleed small widget at 3x.
+    // big enough for the small widget at 3x
     private let pixelSize: CGFloat = 512
 
-    /// Returns the cover's name for the widget snapshot, or `nil` if it
-    /// couldn't be saved. The widget reads it through `largeFileName(for:)`.
+    // the cover's name for the widget, or nil if it couldn't be saved
     func save(_ url: URL) async -> String? {
-        guard let directory = WidgetArtwork.directory else { return nil }
+        guard let directory = WidgetArtwork.directory else {
+            return nil
+        }
         let name = Self.fileName(for: url)
         let largeName = WidgetArtwork.largeFileName(for: name)
         let fileURL = directory.appendingPathComponent(largeName)
-        if FileManager.default.fileExists(atPath: fileURL.path) { return name }
+        // already saved
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            return name
+        }
 
         guard let image = await ArtworkCache.shared.load(url),
               let data = resized(image, to: pixelSize).jpegData(compressionQuality: 0.8)
-        else { return nil }
+        else {
+            return nil
+        }
 
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -30,6 +36,7 @@ final class WidgetArtworkStore {
         return name
     }
 
+    // a square copy at the given pixel size
     private func resized(_ image: UIImage, to pixelSize: CGFloat) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
@@ -39,7 +46,7 @@ final class WidgetArtworkStore {
         }
     }
 
-    /// Only the current cover is ever shown, so older ones are dropped.
+    // only the current cover is shown, so older ones are deleted
     private func removeFiles(in directory: URL, except keep: Set<String>) {
         let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
         for name in names where !keep.contains(name) {
@@ -47,8 +54,12 @@ final class WidgetArtworkStore {
         }
     }
 
+    // a short name made from the url, the same every time for the same cover
     private static func fileName(for url: URL) -> String {
         let digest = SHA256.hash(data: Data(url.absoluteString.utf8))
-        return digest.prefix(12).map { String(format: "%02x", $0) }.joined() + ".jpg"
+        let hex = digest.prefix(12).map { byte in
+            String(format: "%02x", byte)
+        }
+        return hex.joined() + ".jpg"
     }
 }

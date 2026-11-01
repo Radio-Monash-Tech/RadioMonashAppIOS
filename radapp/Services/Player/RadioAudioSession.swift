@@ -1,28 +1,25 @@
 import AVFoundation
 import Combine
 
-/// The shared audio session, set up for radio, and the system events the
-/// player has to react to.
+// the phone's audio set up for radio, and the system events the player reacts to
 @MainActor
 final class RadioAudioSession {
     enum Event {
-        /// A phone call or alarm took the audio; iOS has already paused us.
+        // a call or alarm took the audio
         case interruptionBegan
         case interruptionEnded(shouldResume: Bool)
-        /// Headphones were unplugged; iOS has already paused us.
+        // headphones were unplugged
         case outputLost
+        // ios restarted its audio system
         case mediaServicesReset
     }
 
     var onEvent: ((Event) -> Void)?
     private var subscriptions = Set<AnyCancellable>()
 
+    // playback keeps playing when locked, ignores the silent switch and gets the lock screen controls
     func configure() throws {
         let session = AVAudioSession.sharedInstance()
-        // .playback keeps audio alive when the screen locks and ignores
-        // the silent switch the way a radio should. Not mixing with other
-        // audio makes us the Now Playing app, which gets the Lock Screen
-        // and Control Centre controls.
         try session.setCategory(.playback, mode: .default)
         try session.setActive(true)
     }
@@ -31,35 +28,45 @@ final class RadioAudioSession {
         let center = NotificationCenter.default
         let session = AVAudioSession.sharedInstance()
 
+        // calls and alarms
         center.publisher(for: AVAudioSession.interruptionNotification, object: session)
             .sink { [weak self] note in
-                let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt)
-                    .flatMap(AVAudioSession.InterruptionType.init(rawValue:))
-                let options = AVAudioSession.InterruptionOptions(
-                    rawValue: note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0)
-                let shouldResume = options.contains(.shouldResume)
+                let rawType = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+                let type = rawType.flatMap(AVAudioSession.InterruptionType.init(rawValue:))
+                let rawOptions = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+                let shouldResume = AVAudioSession.InterruptionOptions(rawValue: rawOptions).contains(.shouldResume)
                 Task { @MainActor in
                     switch type {
-                    case .began: self?.onEvent?(.interruptionBegan)
-                    case .ended: self?.onEvent?(.interruptionEnded(shouldResume: shouldResume))
-                    default: break
+                    case .began:
+                        self?.onEvent?(.interruptionBegan)
+                    case .ended:
+                        self?.onEvent?(.interruptionEnded(shouldResume: shouldResume))
+                    default:
+                        break
                     }
                 }
             }
             .store(in: &subscriptions)
 
+        // headphones or bluetooth disconnected
         center.publisher(for: AVAudioSession.routeChangeNotification, object: session)
             .sink { [weak self] note in
-                let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt)
-                    .flatMap(AVAudioSession.RouteChangeReason.init(rawValue:))
-                guard reason == .oldDeviceUnavailable else { return }
-                Task { @MainActor in self?.onEvent?(.outputLost) }
+                let rawReason = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
+                let reason = rawReason.flatMap(AVAudioSession.RouteChangeReason.init(rawValue:))
+                guard reason == .oldDeviceUnavailable else {
+                    return
+                }
+                Task { @MainActor in
+                    self?.onEvent?(.outputLost)
+                }
             }
             .store(in: &subscriptions)
 
         center.publisher(for: AVAudioSession.mediaServicesWereResetNotification, object: session)
             .sink { [weak self] _ in
-                Task { @MainActor in self?.onEvent?(.mediaServicesReset) }
+                Task { @MainActor in
+                    self?.onEvent?(.mediaServicesReset)
+                }
             }
             .store(in: &subscriptions)
     }

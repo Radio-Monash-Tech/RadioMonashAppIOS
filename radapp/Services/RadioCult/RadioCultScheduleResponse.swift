@@ -1,14 +1,14 @@
 import Foundation
 
-// Decodable shapes for GET /api/station/:stationId/schedule, plus their
-// mapping into the app's domain models.
-
+// the json from schedule
 struct ScheduleResponse: Decodable {
     let schedules: [ScheduleEvent]
 }
 
+// one episode
 struct ScheduleEvent: Decodable {
     let id: String
+    // the same for every episode of a show
     let originalId: String?
     let title: String
     let startDateUtc: String
@@ -20,6 +20,7 @@ struct ScheduleEvent: Decodable {
         case id, originalId, title, startDateUtc, endDateUtc, description, artists
     }
 
+    // a bad description or artist list is skipped instead of failing the whole schedule
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
@@ -32,28 +33,39 @@ struct ScheduleEvent: Decodable {
     }
 }
 
+// a host
 struct ScheduleArtist: Decodable {
     let id: String
     let name: String
 }
 
 extension ScheduleResponse {
+    // turned into the app's own shows, in start order
     func toScheduledShows() -> [ScheduledShow] {
-        schedules.compactMap { event in
+        let shows: [ScheduledShow] = schedules.compactMap { event in
+            // skip episodes with bad times
             guard let start = RadioCultDate.parse(event.startDateUtc),
                   let end = RadioCultDate.parse(event.endDateUtc),
                   end > start
-            else { return nil }
+            else {
+                return nil
+            }
 
-            let summary = event.description?.attributedText
+            // no summary rather than an empty one
+            var summary = event.description?.attributedText
+            if summary?.characters.isEmpty == true {
+                summary = nil
+            }
             let series = ShowSeries(
                 id: event.originalId ?? event.id,
                 title: event.title.trimmingCharacters(in: .whitespacesAndNewlines),
                 hosts: event.artists.map(\.name),
-                summary: summary.flatMap { $0.characters.isEmpty ? nil : $0 }
+                summary: summary
             )
             return ScheduledShow(id: event.id, series: series, start: start, end: end)
         }
-        .sorted { $0.start < $1.start }
+        return shows.sorted { first, second in
+            first.start < second.start
+        }
     }
 }

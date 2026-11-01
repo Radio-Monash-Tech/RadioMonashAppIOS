@@ -1,10 +1,10 @@
 import AVKit
 import SwiftUI
 
-/// The row under the transport: captions, AirPlay, recently played.
+// captions, airplay and recently played, under the play button
 struct PlayerUtilityRow: View {
     let captionsOn: Bool
-    /// False where captions can't run; the button stays but explains why.
+    // false where captions can't run; the button stays and explains why
     let captionsAvailable: Bool
     let showingRecent: Bool
     let onCaptions: () -> Void
@@ -43,6 +43,7 @@ struct PlayerUtilityRow: View {
     }
 }
 
+// a round icon, filled with the accent colour when on
 private struct UtilityIcon: View {
     let name: String
     let isOn: Bool
@@ -58,7 +59,7 @@ private struct UtilityIcon: View {
     }
 }
 
-/// The system AirPlay picker, so audio can move to speakers, a car or a TV.
+// the system airplay picker, for speakers, cars and tvs
 struct AirPlayButton: UIViewRepresentable {
     @Environment(\.accentChoice) private var accent
 

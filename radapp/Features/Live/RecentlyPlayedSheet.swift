@@ -1,10 +1,9 @@
 import SwiftUI
 import SwiftData
 
-/// Recently played, opened from the list button under the player. The song
-/// on air comes first, then what RadioCult reports played before it. Tap a
-/// heart (or swipe) to like a song; swipe to share it.
+// the song on air, then what played before it, with like and share
 struct RecentlyPlayedSheet: View {
+    // opens the full history
     let onSeeAll: () -> Void
 
     @EnvironmentObject private var model: RadioPlayerModel
@@ -20,6 +19,7 @@ struct RecentlyPlayedSheet: View {
                 if model.isIdentifiedTrack || model.liveShow != nil {
                     nowRow
                 }
+                // built once so each row can check quickly
                 let likedKeys = Set(favourites.map(\.key))
                 ForEach(model.history) { track in
                     historyRow(track, isLiked: likedKeys.contains(track.favouriteKey))
@@ -48,8 +48,12 @@ struct RecentlyPlayedSheet: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel("Close")
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel("Close")
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -59,9 +63,7 @@ struct RecentlyPlayedSheet: View {
         .presentationDragIndicator(.visible)
     }
 
-    // MARK: Rows
-
-    /// The song on air, or the show when a host is on and no song is named.
+    // the song on air, or the show when no song is named
     @ViewBuilder
     private var nowRow: some View {
         if model.isIdentifiedTrack {
@@ -72,10 +74,12 @@ struct RecentlyPlayedSheet: View {
                 artworkURL: track.artworkURL,
                 trailing: .now,
                 isLiked: model.isCurrentTrackLiked,
-                onToggleLike: model.canLikeCurrentTrack ? { model.toggleLike() } : nil
+                onToggleLike: nowPlayingLikeAction
             )
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                likeAction(isLiked: model.isCurrentTrackLiked) { model.toggleLike() }
+                likeAction(isLiked: model.isCurrentTrackLiked) {
+                    model.toggleLike()
+                }
                 shareAction(ShareableTrack(title: track.title, artist: track.artist))
             }
         } else if let show = model.liveShow {
@@ -84,7 +88,18 @@ struct RecentlyPlayedSheet: View {
         }
     }
 
+    // nil hides the heart when the song can't be liked
+    private var nowPlayingLikeAction: (() -> Void)? {
+        guard model.canLikeCurrentTrack else {
+            return nil
+        }
+        return {
+            model.toggleLike()
+        }
+    }
+
     private func historyRow(_ track: PlayedTrack, isLiked: Bool) -> some View {
+        // saved with the show that was on when it played
         let toggle = {
             model.toggleLike(track, showName: schedule.onAir(at: track.playedAt)?.series.title)
         }
@@ -119,6 +134,7 @@ struct RecentlyPlayedSheet: View {
     }
 }
 
+// artwork, title, artist, "Now" or the time, and a heart
 private struct TrackRow: View {
     enum Trailing {
         case now
@@ -131,7 +147,7 @@ private struct TrackRow: View {
     var showsStationLogo = false
     let trailing: Trailing
     let isLiked: Bool
-    /// Nil hides the heart (nothing to like, such as a show with no song named).
+    // nil hides the heart
     let onToggleLike: (() -> Void)?
     @Environment(\.accentChoice) private var accent
 

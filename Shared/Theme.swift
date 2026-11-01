@@ -1,5 +1,6 @@
 import SwiftUI
 
+// the app's base colours, all system colours so they adapt to dark mode
 enum Brand {
     static let background = Color(.systemBackground)
     static let elevated = Color(.secondarySystemBackground)
@@ -11,6 +12,7 @@ enum Brand {
     static let tertiaryText = Color(.tertiaryLabel)
 }
 
+// warning, error and liked colours, stronger with increase contrast
 enum PlayerPalette {
     static let warn = Color.contrastAdaptive(
         standard: UIColor(red: 1.0, green: 0.651, blue: 0.149, alpha: 1),         // #FFA726
@@ -26,12 +28,16 @@ enum PlayerPalette {
 }
 
 private extension Color {
-    /// Swaps to a stronger shade when Increase Contrast is on, whether set in iOS
-    /// or forced by the app's Accessibility setting.
+    // a stronger shade when increase contrast is on, from ios or the app's own setting
     static func contrastAdaptive(standard: UIColor, highContrastLight: UIColor, highContrastDark: UIColor) -> Color {
         Color(uiColor: UIColor { traits in
-            guard traits.accessibilityContrast == .high else { return standard }
-            return traits.userInterfaceStyle == .dark ? highContrastDark : highContrastLight
+            guard traits.accessibilityContrast == .high else {
+                return standard
+            }
+            if traits.userInterfaceStyle == .dark {
+                return highContrastDark
+            }
+            return highContrastLight
         })
     }
 }

@@ -2,6 +2,7 @@ import SwiftUI
 import AVFoundation
 import MediaPlayer
 
+// the mute button and volume slider
 struct VolumeControlBar: View {
     @State private var isMuted: Bool
     @State private var systemVolume = AVAudioSession.sharedInstance().outputVolume
@@ -12,14 +13,17 @@ struct VolumeControlBar: View {
         self.onMuteChange = onMuteChange
     }
 
-    private var isSilent: Bool { isMuted || systemVolume == 0 }
+    // muted, or the phone's volume is at zero
+    private var isSilent: Bool {
+        isMuted || systemVolume == 0
+    }
 
     var body: some View {
         HStack(spacing: 16) {
             Button {
                 isMuted.toggle()
             } label: {
-                // Fixed so it never outgrows its 48pt circle.
+                // fixed size so it never outgrows its 48pt circle
                 Image(systemName: isSilent ? "speaker.slash.fill" : "speaker.wave.2.fill")
                     .font(.system(size: 17))
                     .foregroundStyle(.primary)
@@ -29,20 +33,24 @@ struct VolumeControlBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel(isMuted ? "Unmute" : "Mute")
 
-            // Drives the device's system volume, so it stays in sync with the hardware buttons.
+            // moves the phone's own volume, in sync with the side buttons
             SystemVolumeSlider()
                 .frame(height: 34)
                 .opacity(isMuted ? 0.4 : 1)
                 .accessibilityLabel("Volume")
         }
-        .onChange(of: isMuted) { _, newValue in onMuteChange(newValue) }
-        .onReceive(AVAudioSession.sharedInstance().publisher(for: \.outputVolume)) { systemVolume = $0 }
+        .onChange(of: isMuted) { _, newValue in
+            onMuteChange(newValue)
+        }
+        // follows the side buttons
+        .onReceive(AVAudioSession.sharedInstance().publisher(for: \.outputVolume)) { volume in
+            systemVolume = volume
+        }
     }
 }
 
 #if targetEnvironment(simulator)
-/// `MPVolumeView` draws nothing in the Simulator, which has no device volume
-/// to control, so the Simulator gets a plain slider for the stream's volume.
+// the simulator has no phone volume, so it gets a plain slider for the stream
 private struct SystemVolumeSlider: View {
     @EnvironmentObject private var player: RadioPlayerModel
     @State private var volume: Float = 1
@@ -50,11 +58,16 @@ private struct SystemVolumeSlider: View {
     var body: some View {
         Slider(value: $volume, in: 0...1)
             .tint(.primary)
-            .onAppear { volume = player.volume }
-            .onChange(of: volume) { _, newValue in player.volume = newValue }
+            .onAppear {
+                volume = player.volume
+            }
+            .onChange(of: volume) { _, newValue in
+                player.volume = newValue
+            }
     }
 }
 #else
+// apple's volume slider for the phone's own volume
 private struct SystemVolumeSlider: UIViewRepresentable {
     func makeUIView(context: Context) -> MPVolumeView {
         let view = MPVolumeView()

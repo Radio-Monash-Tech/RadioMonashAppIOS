@@ -1,5 +1,6 @@
 import Foundation
 
+// one journalism article from squarespace
 struct Article: Identifiable, Hashable, Codable {
     let id: String
     var title: String
@@ -10,10 +11,16 @@ struct Article: Identifiable, Hashable, Codable {
     var webURL: URL?
     var bodyHTML: String
     var readMinutes: Int
-    /// The filter it's tagged under, shown as its label in the list.
+    // the filter it's tagged under
     var topic: ArticleTopic? = nil
 
+    // "Christopher Hall" becomes "CH"
     var authorInitials: String {
-        author.split(separator: " ").compactMap(\.first).prefix(2).map(String.init).joined()
+        let words = author.split(separator: " ")
+        let firstLetters = words.compactMap(\.first)
+        return firstLetters.prefix(2).map { letter in
+            String(letter)
+        }
+        .joined()
     }
 }
