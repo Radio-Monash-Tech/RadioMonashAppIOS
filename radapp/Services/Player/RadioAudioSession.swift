@@ -18,10 +18,15 @@ final class RadioAudioSession {
     private var subscriptions = Set<AnyCancellable>()
 
     // playback keeps playing when locked, ignores the silent switch and gets the lock screen controls
-    func configure() throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playback, mode: .default)
-        try session.setActive(true)
+    func configure() async throws {
+        try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        try await Self.activate()
+    }
+
+    // switching the session on can block, so it runs off the main thread
+    @concurrent
+    nonisolated static func activate() async throws {
+        try AVAudioSession.sharedInstance().setActive(true)
     }
 
     func observe() {

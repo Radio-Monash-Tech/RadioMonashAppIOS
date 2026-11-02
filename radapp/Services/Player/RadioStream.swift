@@ -63,7 +63,9 @@ final class RadioStream {
         tearDown()
         state = .connecting
         // the session can switch off while the app was suspended
-        try? AVAudioSession.sharedInstance().setActive(true)
+        Task {
+            try? await RadioAudioSession.activate()
+        }
 
         let item = AVPlayerItem(url: url)
         let player = AVPlayer(playerItem: item)

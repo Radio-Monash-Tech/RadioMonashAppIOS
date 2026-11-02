@@ -31,10 +31,12 @@ extension RadioPlayerModel {
     }
 
     func configureAudioSession() {
-        do {
-            try audioSession.configure()
-        } catch {
-            stream.fail("Couldn't start audio session.")
+        Task {
+            do {
+                try await audioSession.configure()
+            } catch {
+                stream.fail("Couldn't start audio session.")
+            }
         }
     }
 
