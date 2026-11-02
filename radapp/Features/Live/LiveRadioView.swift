@@ -3,7 +3,7 @@ import SwiftData
 
 // screens the live tab can push
 enum LiveRoute: Hashable {
-    case history, transcript
+    case history
 }
 
 // the live tab: artwork, titles, controls and live captions
@@ -170,7 +170,7 @@ struct LiveRadioView: View {
         }
     }
 
-    // the Aa menu: caption size, music captions and the transcript
+    // the Aa menu: caption size and music captions
     private var captionOptions: some View {
         Menu {
             Picker("Caption Size", selection: Binding(
@@ -194,11 +194,6 @@ struct LiveRadioView: View {
                 }
             )) {
                 Label("Caption Music", systemImage: "music.note")
-            }
-            Button {
-                path.append(LiveRoute.transcript)
-            } label: {
-                Label("Open Transcript", systemImage: "text.page")
             }
         } label: {
             Text("Aa")
@@ -257,8 +252,6 @@ struct LiveRadioView: View {
         switch route {
         case .history:
             PlayHistoryView()
-        case .transcript:
-            TranscriptView()
         }
     }
 }

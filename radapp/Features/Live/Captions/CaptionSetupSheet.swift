@@ -24,8 +24,6 @@ struct CaptionSetupSheet: View {
                           "Captions are created on this phone as you listen. No audio is recorded or sent anywhere.")
                     point("music.note", "Lyrics too",
                           "Songs are captioned as well, with swearing masked. Turn this off with Aa if you only want talk.")
-                    point("text.page", "Scroll back and search",
-                          "Transcript shows the latest captions so you can catch something you missed. Nothing is saved to your iPhone.")
                     point("exclamationmark.bubble", "Made automatically",
                           "Captions may get some words wrong, especially names and sung lyrics.")
                 }

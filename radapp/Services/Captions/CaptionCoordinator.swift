@@ -261,7 +261,7 @@ final class CaptionCoordinator {
         }
     }
 
-    // enough to scroll back a little; nothing is saved
+    // enough for the live captions; nothing is saved
     private static let maxLines = 40
 
     // the host while talking, the song while music plays

@@ -251,6 +251,9 @@ private struct ArticleBlockView: View {
     }
 }
 
+// MARK: Article Text size
+
+
 // the reader's text size choices
 enum ReaderTextSize: String, CaseIterable, Identifiable {
     case small, standard, large, extraLarge
@@ -271,7 +274,7 @@ enum ReaderTextSize: String, CaseIterable, Identifiable {
             "Extra Large"
         }
     }
-
+    
     // the dynamic type size each choice uses
     var dynamicTypeSize: DynamicTypeSize {
         switch self {
