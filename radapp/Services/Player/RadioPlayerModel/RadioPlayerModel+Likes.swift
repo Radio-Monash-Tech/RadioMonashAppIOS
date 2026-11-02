@@ -4,6 +4,7 @@ import Foundation
 extension RadioPlayerModel {
     // the song on air
     func toggleLike() {
+        // guard exits early if the check fails
         guard canLikeCurrentTrack else {
             return
         }

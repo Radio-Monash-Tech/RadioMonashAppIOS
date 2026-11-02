@@ -2,19 +2,31 @@ import AVFoundation
 import MediaToolbox
 import Synchronization
 
-// copies the stream's audio for captions without changing how it plays; only works if added before playback
+// MARK: - Tap bridge
+
+// copies the stream's audio for captions without changing how it plays, only works if added before playback
+// @MainActor runs this on the main thread
 @MainActor
 final class AudioTapBridge {
+    // MARK: - State
+
+    // the connection the tap is on, weak so old ones can be freed
     private weak var item: AVPlayerItem?
+    // the shared box for the current tap
     private var context: TapContext?
+    // empties the ring buffer while capturing, nil otherwise
     private var drainTask: Task<Void, Never>?
 
-    // adds the idle tap; call before the item starts playing
+    // MARK: - Installing the tap
+
+    // adds the idle tap, call before the item starts playing
     func install(on item: AVPlayerItem) {
         stopCapture()
+        // guard exits early if the check fails
         guard item !== self.item else {
             return
         }
+        //find audio track in the radio stream
         let audioTrack = item.tracks.compactMap(\.assetTrack).first { track in
             track.mediaType == .audio
         }
@@ -26,9 +38,13 @@ final class AudioTapBridge {
         guard let tap = Self.makeTap(context: context) else {
             return
         }
+        // settings for the track
         let parameters = AVMutableAudioMixInputParameters(track: track)
+        // plug the tap into those settings
         parameters.audioTapProcessor = tap
+        // mix containing those settings
         let mix = AVMutableAudioMix()
+        // give mix to the connection
         mix.inputParameters = [parameters]
         item.audioMix = mix
         self.item = item
@@ -40,7 +56,9 @@ final class AudioTapBridge {
         self.item === item && context != nil
     }
 
-    // starts copying audio out; the stream ends on stopCapture()
+    // MARK: - Capturing audio
+
+    // starts copying audio out, the stream ends on stopCapture()
     func startCapture() -> AsyncStream<AVAudioPCMBuffer>? {
         stopCapture()
         guard let context else {
@@ -55,12 +73,16 @@ final class AudioTapBridge {
         return stream
     }
 
+    // stops copying, the tap stays on but idle
     func stopCapture() {
         context?.isCapturing.store(false, ordering: .releasing)
         drainTask?.cancel()
         drainTask = nil
     }
 
+    // MARK: - Building the tap
+
+    // builds the tap and gives it our callbacks
     private static func makeTap(context: TapContext) -> MTAudioProcessingTap? {
         // retained here, released by the tap's finalize callback
         let clientInfo = Unmanaged.passRetained(context).toOpaque()
@@ -83,8 +105,12 @@ final class AudioTapBridge {
         return tap
     }
 
+    // MARK: - Draining the ring buffer
+
     // moves audio out of the ring buffer every 100 ms, off the main thread
+    // nonisolated means not tied to the main thread
     private nonisolated static func drain(_ context: TapContext, into continuation: AsyncStream<AVAudioPCMBuffer>.Continuation) async {
+        // defer runs when the function exits, however it exits
         defer {
             continuation.finish()
         }
@@ -107,16 +133,23 @@ final class AudioTapBridge {
     }
 }
 
+// MARK: - Shared tap state
+
 // shared between the tap's c callbacks and the drain task
+// @unchecked Sendable promises it's thread-safe, the compiler can't check
 nonisolated final class TapContext: @unchecked Sendable {
     // about 10 seconds of 48 khz audio
     let ring = AudioRingBuffer(capacity: 480_000)
     // off while captions aren't running, so the idle tap copies nothing
+    // Atomic can be read and written from several threads safely, without locks
     let isCapturing = Atomic<Bool>(false)
+    // the sample rate as raw bits, since Atomic can't hold a Double
     private let sampleRateBits = Atomic<UInt64>(0)
     // set in prepare, which always runs before the first process call
     var channels = 0
+    // true when the channels alternate in one buffer
     var isInterleaved = false
+    // only 32-bit float audio gets copied
     var isFloat = false
 
     // stored as bits so it can be atomic
@@ -138,13 +171,17 @@ nonisolated final class TapContext: @unchecked Sendable {
         return AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)
     }
 
+    // gets the box back from a tap without changing who owns it
     static func from(_ tap: MTAudioProcessingTap) -> TapContext {
         Unmanaged<TapContext>.fromOpaque(MTAudioProcessingTapGetStorage(tap)).takeUnretainedValue()
     }
 }
 
+// MARK: - Tap callbacks
+
 // the tap callbacks are c function pointers, so they're free functions
 
+// runs once when the tap is made, stores our box's address
 private nonisolated func tapInit(
     _ tap: MTAudioProcessingTap,
     _ clientInfo: UnsafeMutableRawPointer?,
@@ -153,6 +190,7 @@ private nonisolated func tapInit(
     storageOut.pointee = clientInfo
 }
 
+// runs once when the tap is destroyed, let go of our box
 private nonisolated func tapFinalize(_ tap: MTAudioProcessingTap) {
     Unmanaged<TapContext>.fromOpaque(MTAudioProcessingTapGetStorage(tap)).release()
 }
@@ -175,6 +213,7 @@ private nonisolated func tapPrepare(
 
 // runs on the real-time thread: no allocating, locking or waiting
 private nonisolated func tapProcess(
+    // reads from C declaration callbacks style
     _ tap: MTAudioProcessingTap,
     _ numberFrames: CMItemCount,
     _ flags: MTAudioProcessingTapFlags,

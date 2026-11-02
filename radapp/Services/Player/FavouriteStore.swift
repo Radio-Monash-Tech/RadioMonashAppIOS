@@ -26,6 +26,7 @@ struct FavouriteStore {
 
     // the liked song with this key, if any
     private func favourite(key: String) -> FavouriteTrack? {
+        // #Predicate macro, a filter SwiftData can run
         var descriptor = FetchDescriptor<FavouriteTrack>(predicate: #Predicate { track in
             track.key == key
         })

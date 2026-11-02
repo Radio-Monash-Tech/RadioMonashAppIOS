@@ -8,6 +8,8 @@ struct LargeRadioView: View {
         entry.snapshot
     }
 
+    // MARK: - Body
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if s.isOnAir {
@@ -90,6 +92,8 @@ struct LargeRadioView: View {
         }
         .containerBackground(widgetBackground(s), for: .widget)
     }
+
+    // MARK: - Parts
 
     // the next three shows that haven't started
     private var upNext: [RadioWidgetSnapshot.UpcomingShow] {

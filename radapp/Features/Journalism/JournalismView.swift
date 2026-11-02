@@ -1,8 +1,12 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Journalism view
+
 // the journalism tab: topic filter and the article list
 struct JournalismView: View {
+    // MARK: - State
+
     @EnvironmentObject private var journalism: JournalismStore
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accentChoice) private var accent
@@ -21,6 +25,8 @@ struct JournalismView: View {
             first
         })
     }
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -54,6 +60,8 @@ struct JournalismView: View {
             }
         }
     }
+
+    // MARK: - Article list
 
     private var articleList: some View {
         List {
@@ -196,6 +204,8 @@ struct JournalismView: View {
     }
 }
 
+// MARK: - Row style
+
 private extension View {
     // the spacing and clear background every row uses
     func articleListRow() -> some View {
@@ -204,6 +214,8 @@ private extension View {
             .listRowBackground(Color.clear)
     }
 }
+
+// MARK: - Feature card
 
 // the big card for the latest article
 private struct FeatureCard: View {
@@ -233,6 +245,8 @@ private struct FeatureCard: View {
         .contentShape(Rectangle())
     }
 }
+
+// MARK: - Article row
 
 // apple news style row: title on the left, square photo on the right
 private struct ArticleRow: View {
@@ -279,6 +293,8 @@ private struct ArticleRow: View {
     }
 }
 
+// MARK: - Topic label
+
 // the coloured topic label above a title
 private struct ArticleSource: View {
     let article: Article
@@ -293,6 +309,8 @@ private struct ArticleSource: View {
             .lineLimit(1)
     }
 }
+
+// MARK: - Article footer
 
 // byline on the left, ••• menu on the right
 private struct ArticleFooter: View {
@@ -327,6 +345,8 @@ private struct ArticleFooter: View {
     }
 }
 
+// MARK: - Placeholders
+
 extension Article {
     // a fake article for loading placeholders and previews
     static func placeholder(_ index: Int) -> Article {
@@ -344,11 +364,15 @@ extension Article {
     }
 }
 
+// MARK: - Preview
+
 #Preview {
     JournalismView()
         .environmentObject(JournalismStore())
         .modelContainer(for: SavedArticle.self, inMemory: true)
 }
+
+// MARK: - Topic filter
 
 // the row of topic pills at the top
 private struct TopicFilter: View {
@@ -374,6 +398,8 @@ private struct TopicFilter: View {
         }
     }
 }
+
+// MARK: - Topic pill
 
 // one topic button, filled with the accent colour when selected
 private struct TopicPill: View {

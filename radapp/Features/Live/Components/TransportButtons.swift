@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Play button
+
 // the big round play / pause button
 struct PlaybackFAB: View {
     let isPlaying: Bool
@@ -24,10 +26,13 @@ struct PlaybackFAB: View {
     }
 }
 
+// MARK: - Like button
+
 // the heart button beside play
 struct FavoriteToggleButton: View {
     let isFavorite: Bool
     let action: () -> Void
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.colorScheme) private var colorScheme
 
     private var filledColor: Color {
@@ -55,6 +60,8 @@ struct FavoriteToggleButton: View {
         .accessibilityValue(isFavorite ? "Liked" : "Not liked")
     }
 }
+
+// MARK: - Sleep timer button
 
 // the alarm button with a menu of stop times
 struct SleepTimerButton: View {
@@ -124,6 +131,7 @@ struct SleepTimerButton: View {
 
     // what voiceover says about the timer
     private var timerDescription: String {
+        // guard exits early if the check fails
         guard let endsAt else {
             return "Off"
         }

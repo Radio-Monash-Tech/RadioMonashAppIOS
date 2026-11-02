@@ -2,16 +2,22 @@ import Foundation
 import Combine
 
 // this week's schedule, with an offline copy
+// @MainActor runs this on the main thread
 @MainActor
 final class ScheduleStore: ObservableObject {
+    // MARK: - State the screen reads
+
     enum Phase: Equatable {
         case idle, loading, loaded, failed(String)
     }
 
+    // @Published property wrapper, views watching this object redraw when it changes
     @Published private(set) var shows: [ScheduledShow] = []
     @Published private(set) var phase: Phase = .idle
     // set only while showing the saved copy because loading failed
     @Published private(set) var offlineCopyDate: Date?
+
+    // MARK: - Private state
 
     private let client = RadioCultClient.shared
     private var loadedAt: Date?
@@ -20,6 +26,9 @@ final class ScheduleStore: ObservableObject {
     private let staleAfter: TimeInterval = 15 * 60
     private static let cacheName = "schedule"
 
+    // MARK: - Init
+
+    // init sets up a new instance
     init() {
         // show the last schedule straight away; the first load replaces it
         if let cached = OfflineCache.load([ScheduledShow].self, named: Self.cacheName) {
@@ -28,9 +37,12 @@ final class ScheduleStore: ObservableObject {
         }
     }
 
+    // MARK: - Lookups
+
     // the seven days of this melbourne week, monday first
     var week: [Date] {
         let calendar = Calendar.melbourne
+        // guard exits early if the check fails
         guard let start = calendar.dateInterval(of: .weekOfYear, for: .now)?.start else {
             return []
         }
@@ -75,6 +87,8 @@ final class ScheduleStore: ObservableObject {
             show.isOnAir(at: date)
         }
     }
+
+    // MARK: - Loading
 
     // loads unless it was loaded in the last 15 minutes
     func loadIfNeeded() async {

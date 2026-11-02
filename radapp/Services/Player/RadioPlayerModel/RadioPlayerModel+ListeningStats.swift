@@ -4,6 +4,7 @@ import Foundation
 extension RadioPlayerModel {
     // the show being listened to, with its schedule id when known
     private var listeningShow: ListeningTracker.Show? {
+        // guard exits early if the check fails
         guard let liveShow else {
             return nil
         }

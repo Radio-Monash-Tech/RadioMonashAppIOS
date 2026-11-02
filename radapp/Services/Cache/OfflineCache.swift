@@ -10,6 +10,7 @@ enum OfflineCache {
 
     static func save<Value: Codable>(_ value: Value, as name: String) {
         let entry = Entry(savedAt: .now, value: value)
+        // guard exits early if the check fails
         guard let data = try? JSONEncoder().encode(entry) else {
             return
         }

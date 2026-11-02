@@ -1,6 +1,8 @@
 import Foundation
 import UserNotifications
 
+// MARK: - Reminders
+
 // a notification 10 minutes before each episode of a followed show, rebuilt whenever anything changes
 enum ShowReminderScheduler {
     static let enabledKey = "showReminders"
@@ -20,6 +22,7 @@ enum ShowReminderScheduler {
             }
         center.removePendingNotificationRequests(withIdentifiers: stale)
 
+        // guard exits early if the check fails
         guard isEnabled else {
             return
         }
@@ -55,10 +58,13 @@ enum ShowReminderScheduler {
     }
 }
 
+// MARK: - Foreground banners
+
 // lets reminders show as banners while the app is open
 final class ForegroundNotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
     static let shared = ForegroundNotificationPresenter()
 
+    // nonisolated means not tied to the main thread
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification

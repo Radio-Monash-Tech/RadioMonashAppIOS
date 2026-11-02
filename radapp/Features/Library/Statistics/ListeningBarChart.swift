@@ -1,18 +1,29 @@
 import Charts
 import SwiftUI
 
+// MARK: - Bar chart
+
 // one bar per day (or month), tap or drag to pick one
 struct ListeningBarChart: View {
+    // MARK: - Inputs
+
     let buckets: [ListeningStats.Bucket]
     let average: TimeInterval?
     let selection: Int
     let select: (Int) -> Void
+
+    // MARK: - State
+
     // the bar under the finger, as the chart reports it
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var scrubbed: String?
     // false at first, so the bars can grow up from zero
     @State private var hasGrown = false
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.accentChoice) private var accent
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // MARK: - Scale
 
     // the month view has 28-31 thin bars
     private var isDense: Bool {
@@ -43,11 +54,14 @@ struct ListeningBarChart: View {
     }
 
     private var selectedBucket: ListeningStats.Bucket? {
+        // guard exits early if the check fails
         guard buckets.indices.contains(selection) else {
             return nil
         }
         return buckets[selection]
     }
+
+    // MARK: - Body
 
     var body: some View {
         Chart {
@@ -151,6 +165,8 @@ struct ListeningBarChart: View {
         }
     }
 
+    // MARK: - Helpers
+
     // never shorter than the stub
     private func barValue(_ bucket: ListeningStats.Bucket) -> TimeInterval {
         if bucket.seconds > 0 {
@@ -178,6 +194,8 @@ struct ListeningBarChart: View {
         return accent.color.opacity(0.4)
     }
 }
+
+// MARK: - Selection callout
 
 // "Thursday / 48m" above the selected bar
 private struct SelectionCallout: View {

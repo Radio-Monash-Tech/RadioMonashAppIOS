@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Image cache
+
 // run it on main thread
 @MainActor
 final class ArtworkCache {
@@ -56,6 +58,8 @@ final class ArtworkCache {
         images.removeAllObjects()
     }
 }
+
+// MARK: - Cached artwork view
 
 // like AsyncImage, but uses the shared cache
 struct CachedArtwork<Content: View, Placeholder: View>: View {

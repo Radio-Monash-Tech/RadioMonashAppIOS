@@ -3,14 +3,19 @@ import SwiftUI
 
 // pieces shared by the small, medium and large widgets
 
+// MARK: - Background
+
 // the background in the app's appearance, worked out up front since ios draws it outside the view
 func widgetBackground(_ snapshot: RadioWidgetSnapshot) -> Color {
+    // guard exits early if the check fails
     guard let isDark = snapshot.isDark else {
         return Color(.systemBackground)
     }
     let traits = UITraitCollection(userInterfaceStyle: isDark ? .dark : .light)
     return Color(uiColor: UIColor.systemBackground.resolvedColor(with: traits))
 }
+
+// MARK: - Labels
 
 // a dot and LIVE, only while a show is on
 struct LiveLabel: View {
@@ -39,6 +44,8 @@ struct StationLabel: View {
     }
 }
 
+// MARK: - Cover
+
 // the song's cover if the app saved one, otherwise the station logo
 struct Cover: View {
     let image: UIImage?
@@ -56,6 +63,8 @@ struct Cover: View {
         .accessibilityHidden(true)
     }
 }
+
+// MARK: - Buttons
 
 // runs in the app, so it can start the stream even when the app isn't open
 struct PlayButton: View {
@@ -91,6 +100,8 @@ struct LikeButton: View {
         .accessibilityValue(isLiked ? "Liked" : "Not liked")
     }
 }
+
+// MARK: - Text helpers
 
 // "until 10:00 am", only while a show is on
 func untilText(_ snapshot: RadioWidgetSnapshot) -> String? {

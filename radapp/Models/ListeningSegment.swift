@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 
 // a stretch of listening during one show; segments sharing a session id are one listen
+// @Model macro, makes this class a SwiftData record saved on the device
 @Model
 final class ListeningSegment {
     var sessionID: UUID
@@ -11,6 +12,7 @@ final class ListeningSegment {
     var seriesID: String?
 
     // starts with no length; the tracker moves end on as you listen
+    // init sets up a new instance
     init(sessionID: UUID, start: Date, showName: String?, seriesID: String?) {
         self.sessionID = sessionID
         self.start = start

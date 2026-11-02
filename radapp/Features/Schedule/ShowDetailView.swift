@@ -4,8 +4,10 @@ import SwiftUI
 struct ShowDetailView: View {
     let series: ShowSeries
 
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
+    // @AppStorage property wrapper, saved in UserDefaults and redraws when it changes
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
 
     private var isFollowed: Bool {

@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - Sessions
+
 extension ListeningStats {
     // segments sharing a session id are one listen
     static func sessionCount(in segments: [ListeningSegment]) -> Int {
@@ -13,6 +15,8 @@ extension ListeningStats {
         return total / Double(sessions)
     }
 }
+
+// MARK: - Streaks
 
 extension StatsWindow {
     // longest run of days in a row with any listening
@@ -29,6 +33,7 @@ extension StatsWindow {
             // a segment past midnight counts for both days
             while day < end {
                 days.insert(day)
+                // guard exits early if the check fails
                 guard let next = calendar.date(byAdding: .day, value: 1, to: day) else {
                     break
                 }

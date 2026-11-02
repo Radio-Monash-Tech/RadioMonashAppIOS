@@ -1,6 +1,8 @@
 import MediaAccessibility
 import SwiftUI
 
+// MARK: - System caption size
+
 // the caption size chosen in ios settings > accessibility > subtitles & captioning
 enum CaptionStyle {
     // 1 is the standard size
@@ -12,14 +14,18 @@ enum CaptionStyle {
     static let didChange = Notification.Name(kMACaptionAppearanceSettingsChangedNotification as String)
 }
 
-// the Aa menu's sizes; system follows the ios setting
+// MARK: - Aa menu sizes
+
+// the Aa menu's sizes, system follows the ios setting
 enum CaptionTextSize: String, CaseIterable, Identifiable {
     case system, small, medium, large, extraLarge
 
+    // lets ForEach tell the sizes apart
     var id: Self {
         self
     }
 
+    // the name shown in the Aa menu
     var label: String {
         switch self {
         case .system:

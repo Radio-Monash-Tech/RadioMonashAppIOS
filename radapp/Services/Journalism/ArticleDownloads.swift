@@ -2,8 +2,12 @@ import Foundation
 import CryptoKit
 
 // saves downloaded articles' photos so they read fully offline; ios never clears this folder
+// nonisolated means not tied to the main thread
 nonisolated enum ArticleDownloads {
+    // MARK: - Which images
+
     // every image an article shows, at the sizes the app asks for
+    // @MainActor runs this on the main thread
     @MainActor
     static func imageURLs(for article: Article) -> [URL] {
         var urls: [URL] = []
@@ -17,6 +21,8 @@ nonisolated enum ArticleDownloads {
         return Array(Set(urls))
     }
 
+    // MARK: - Downloading and removing
+
     // downloads every image at the same time; false if any failed
     static func download(_ urls: [URL]) async -> Bool {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -27,6 +33,7 @@ nonisolated enum ArticleDownloads {
                     if FileManager.default.fileExists(atPath: file(for: url).path()) {
                         return true
                     }
+                    // guard exits early if the check fails
                     guard let (data, response) = try? await URLSession.shared.data(from: url),
                           (response as? HTTPURLResponse)?.statusCode == 200
                     else {
@@ -46,6 +53,8 @@ nonisolated enum ArticleDownloads {
             try? FileManager.default.removeItem(at: file(for: url))
         }
     }
+
+    // MARK: - Saved files
 
     // the saved copy of an image, if there is one
     static func data(for url: URL) -> Data? {

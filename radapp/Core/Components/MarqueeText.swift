@@ -1,9 +1,13 @@
 import SwiftUI
 
 struct MarqueeText: View {
+    // MARK: - Inputs
+
     let text: String
     let font: Font
     var alignment: Alignment = .leading
+
+    // MARK: - Timing
 
     // space b/ end of the text
     private let gap: CGFloat = 36
@@ -14,6 +18,8 @@ struct MarqueeText: View {
     // room at each end where the text fades out. It sits just outside the
     private let edgeInset: CGFloat = 10
 
+    // MARK: - State
+
     // never scroll when the user turned on reduce motion
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     // full width of the text and the width available
@@ -22,12 +28,16 @@ struct MarqueeText: View {
     // when the current scroll loop began
     @State private var startDate = Date.now
 
+    // MARK: - Init
+
     // lets callers write MarqueeText("song") without the text label
     init(_ text: String, font: Font, alignment: Alignment = .leading) {
         self.text = text
         self.font = font
         self.alignment = alignment
     }
+
+    // MARK: - Body
 
     // only scroll when the text is too wide to fit
     private var scrolls: Bool {
@@ -88,6 +98,8 @@ struct MarqueeText: View {
             .accessibilityLabel(text)
     }
 
+    // MARK: - Parts
+
     // the text with its font, reused in every copy
     private var label: some View {
         Text(text).font(font)
@@ -117,6 +129,8 @@ struct MarqueeText: View {
         }
     }
 }
+
+// MARK: - Preview
 
 // short, long and centred examples
 #Preview {

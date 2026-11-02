@@ -3,9 +3,12 @@ import SwiftData
 
 // every song the station has reported, with like and share swipes
 struct PlayHistoryView: View {
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
+    // @Query macro, loads SwiftData records and keeps them up to date
     @Query private var favourites: [FavouriteTrack]
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var sharingTrack: ShareableTrack?
 
     var body: some View {

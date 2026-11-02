@@ -1,10 +1,13 @@
 import Foundation
 
+// MARK: - Top shows
+
 extension StatsWindow {
     // the four shows with the most time, grouped by schedule id when known, otherwise by name
     func topShows(in segments: [ListeningSegment]) -> [ListeningStats.ShowTotal] {
         var shows: [String: ListeningStats.ShowTotal] = [:]
         for segment in segments {
+            // guard exits early if the check fails
             guard let name = segment.showName else {
                 continue
             }
@@ -24,6 +27,8 @@ extension StatsWindow {
         return Array(mostListened.prefix(4))
     }
 }
+
+// MARK: - Top artists
 
 extension ListeningStats {
     // the three artists with the most likes, ties in alphabetical order

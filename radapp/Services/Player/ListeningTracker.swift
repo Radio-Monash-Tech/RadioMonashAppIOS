@@ -2,8 +2,11 @@ import Foundation
 import SwiftData
 
 // records how long the stream plays and which show was on, on the device only
+// @MainActor runs this on the main thread
 @MainActor
 final class ListeningTracker {
+    // MARK: - State
+
     struct Show: Equatable {
         var name: String
         var seriesID: String?
@@ -20,6 +23,9 @@ final class ListeningTracker {
     // quick play/pause blips aren't kept
     private static let minimumSegment: TimeInterval = 5
 
+    // MARK: - Recording
+
+    // init sets up a new instance
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
     }
@@ -56,6 +62,8 @@ final class ListeningTracker {
         try? modelContext.save()
     }
 
+    // MARK: - Segments
+
     // starts a new segment and saves it every 30 seconds
     private func open(show: Show?) {
         let id = sessionID ?? UUID()
@@ -66,6 +74,7 @@ final class ListeningTracker {
         checkpointTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.checkpointInterval)
+                // guard exits early if the check fails
                 guard !Task.isCancelled, let self else {
                     return
                 }

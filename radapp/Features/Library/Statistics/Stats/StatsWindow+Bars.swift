@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - Bars
+
 extension StatsWindow {
     // one bar per day, or per month in the year view
     func bars(from segments: [ListeningSegment]) -> [ListeningStats.Bucket] {
@@ -43,6 +45,8 @@ extension StatsWindow {
     }
 }
 
+// MARK: - Bar helpers
+
 extension ListeningStats {
     // the last bar that isn't in the future
     static func todaysBar(in buckets: [Bucket]) -> Int {
@@ -54,6 +58,7 @@ extension ListeningStats {
 
     // average from the first bar with listening up to today, so days before you installed the app don't count
     static func average(of buckets: [Bucket], upTo today: Int) -> TimeInterval? {
+        // guard exits early if the check fails
         guard let first = buckets.firstIndex(where: { bucket in bucket.seconds > 0 }),
               today > first
         else {

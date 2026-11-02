@@ -2,6 +2,9 @@ import SwiftUI
 
 // about radio monash: intro, features, contact and acknowledgement
 struct AboutView: View {
+    // MARK: - State and content
+
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.openURL) private var openURL
     // the accent colour picked in settings
     @Environment(\.accentChoice) private var accent
@@ -13,6 +16,8 @@ struct AboutView: View {
         ("Journalism", "Reviews, features and opinion from student writers"),
         ("Library", "Your liked songs, recently played and listening stats")
     ]
+
+    // MARK: - Body
 
     var body: some View {
         ScrollView {
@@ -38,6 +43,8 @@ struct AboutView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
     }
+
+    // MARK: - Sections
 
     // the station logo fading into the background
     private var hero: some View {
@@ -175,6 +182,8 @@ struct AboutView: View {
             .padding(.top, 22)
     }
 
+    // MARK: - Helpers
+
     // e.g. "1.0", from the app's info.plist
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -190,6 +199,9 @@ struct AboutView: View {
     }
 }
 
+// MARK: - Previews
+
+// #Preview macro, shows this view in Xcode's canvas
 #Preview("Dark") {
     NavigationStack {
         AboutView()

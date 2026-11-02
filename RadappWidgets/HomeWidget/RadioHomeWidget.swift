@@ -1,6 +1,8 @@
 import SwiftUI
 import WidgetKit
 
+// MARK: - Widget
+
 // the home screen widget in small, medium and large
 struct RadioHomeWidget: Widget {
     var body: some WidgetConfiguration {
@@ -13,8 +15,11 @@ struct RadioHomeWidget: Widget {
     }
 }
 
+// MARK: - Size picker
+
 // picks the layout for the widget's size
 struct RadioWidgetView: View {
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.widgetFamily) private var family
     let entry: RadioEntry
 
@@ -33,6 +38,8 @@ struct RadioWidgetView: View {
     }
 }
 
+// MARK: - App appearance
+
 // follows the app's light or dark setting instead of ios when one is picked
 struct AppAppearance: ViewModifier {
     let isDark: Bool?
@@ -46,6 +53,9 @@ struct AppAppearance: ViewModifier {
     }
 }
 
+// MARK: - Previews
+
+// #Preview macro, shows this view in Xcode's canvas
 #Preview("Small", as: .systemSmall) {
     RadioHomeWidget()
 } timeline: {

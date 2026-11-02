@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - JSON
+
 // one piece of the rich-text json radiocult uses for show descriptions
 struct TipTapNode: Decodable {
     let type: String
@@ -17,6 +19,8 @@ struct TipTapMark: Decodable {
     let type: String
     let attrs: Attributes?
 }
+
+// MARK: - Styled text
 
 extension TipTapNode {
     // the node as styled text

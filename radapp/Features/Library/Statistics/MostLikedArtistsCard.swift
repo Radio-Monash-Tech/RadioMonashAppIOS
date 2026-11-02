@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MostLikedArtistsCard: View {
     let artists: [ListeningStats.ArtistLikes]
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.accentChoice) private var accent
 
     var body: some View {

@@ -1,8 +1,13 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Settings view
+
 // every setting, grouped into sections
 struct SettingsView: View {
+    // MARK: - Saved settings
+
+    // @AppStorage property wrapper, saved in UserDefaults and redraws when it changes
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @AppStorage(RadioPlayerModel.resumeOnLaunchKey) private var resumeOnLaunch = false
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
@@ -12,10 +17,17 @@ struct SettingsView: View {
     @AppStorage(ColourVision.storageKey, store: ColourVision.store) private var colourVision: ColourVision = .standard
     @AppStorage(TextSizePreference.storageKey) private var textSizeOffset = 0
 
+    // MARK: - State
+
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var player: RadioPlayerModel
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var cacheBytes = URLCache.shared.currentDiskUsage
+
+    // MARK: - Status text
 
     // what the live captions row says
     private var captionStatus: String {
@@ -51,6 +63,8 @@ struct SettingsView: View {
         let build = info?["CFBundleVersion"] as? String ?? "1"
         return "\(short) (\(build))"
     }
+
+    // MARK: - Body
 
     var body: some View {
         Form {
@@ -187,13 +201,17 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Menu row
+
 // a title, subtitle and dropdown, laid out like the toggle rows
 private struct MenuRow<Menu: View>: View {
     let title: String
     let subtitle: String
+    // @ViewBuilder lets each branch return a different view
     @ViewBuilder let menu: Menu
     @Environment(\.dynamicTypeSize) private var typeSize
 
+    // init sets up a new instance
     init(_ title: String, subtitle: String, @ViewBuilder menu: () -> Menu) {
         self.title = title
         self.subtitle = subtitle
@@ -226,6 +244,8 @@ private struct MenuRow<Menu: View>: View {
         }
     }
 }
+
+// MARK: - Colour vision groups
 
 // colour vision picker sections, by which colours get confused
 private enum ColourVisionGroup: CaseIterable, Identifiable {
@@ -262,6 +282,8 @@ private enum ColourVisionGroup: CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Swatch
+
 // a coloured dot; menus tint symbols, so the colour is baked into the image
 private struct Swatch: View {
     let color: UIColor
@@ -273,6 +295,9 @@ private struct Swatch: View {
     }
 }
 
+// MARK: - Preview
+
+// #Preview macro, shows this view in Xcode's canvas
 #Preview {
     NavigationStack {
         SettingsView()

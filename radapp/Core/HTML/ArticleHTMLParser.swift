@@ -2,6 +2,8 @@ import Foundation
 
 // turns squarespace article html into blocks the app can draw
 struct ArticleHTMLParser {
+    // MARK: - Entry points
+
     // relative links like "/events" are resolved against the station's site
     static let baseURL = URL(string: "https://www.radiomonash.online")!
 
@@ -28,6 +30,8 @@ struct ArticleHTMLParser {
         .joined(separator: "\n\n")
     }
 
+    // MARK: - Parser state
+
     // the kind of block currently being built
     enum BlockKind: Equatable {
         case paragraph, heading(Int), quote, listItem(String), caption
@@ -53,6 +57,8 @@ struct ArticleHTMLParser {
     var seenImages = Set<String>()
     // used to collapse runs of spaces into one
     var lastWasSpace = true
+
+    // MARK: - Parsing
 
     private init() {}
 
@@ -87,6 +93,8 @@ struct ArticleHTMLParser {
         // finish whatever block is still open
         flush()
     }
+
+    // MARK: - Blocks
 
     // finish the open block and start a new kind
     mutating func begin(_ newKind: BlockKind) {

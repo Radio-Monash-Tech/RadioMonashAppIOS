@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - Errors
+
 // an error status from radiocult
 enum RadioCultError: LocalizedError {
     case http(Int)
@@ -14,12 +16,16 @@ enum RadioCultError: LocalizedError {
     }
 }
 
+// MARK: - Client
+
 // talks to radiocult, the station's radio platform
 struct RadioCultClient {
     static let shared = RadioCultClient()
 
     private let baseURL = URL(string: "https://api.radiocult.fm/api/station/radio-monash")!
     private let apiKey = Secrets.radioCultAPIKey
+
+    // MARK: - Endpoints
 
     // what's on air right now
     func liveStatus() async throws -> ScheduleLiveResponse {
@@ -41,6 +47,8 @@ struct RadioCultClient {
         return response.toScheduledShows()
     }
 
+    // MARK: - Requests
+
     // fetches a path with the api key and decodes the json
     private func get<Response: Decodable>(_ path: String, query: [URLQueryItem] = []) async throws -> Response {
         var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
@@ -60,6 +68,8 @@ struct RadioCultClient {
         return try JSONDecoder().decode(Response.self, from: data)
     }
 }
+
+// MARK: - Dates
 
 // radiocult's date format, with or without fractions of a second
 enum RadioCultDate {

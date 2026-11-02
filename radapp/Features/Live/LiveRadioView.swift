@@ -1,22 +1,33 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Routes
+
 // screens the live tab can push
 enum LiveRoute: Hashable {
     case history
 }
 
+// MARK: - Live view
+
 // the live tab: artwork, titles, controls and live captions
 struct LiveRadioView: View {
 
+    // MARK: - State
+
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var model: RadioPlayerModel
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var showingPlatformSheet = false
     @State private var showingRecent = false
     @State private var path = NavigationPath()
     // bumped to play the heart animation
     @State private var likeBurstTrigger = 0
     @State private var showingCaptionSetup = false
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.isLandscapePhone) private var isLandscape
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -63,6 +74,8 @@ struct LiveRadioView: View {
             }
         }
     }
+
+    // MARK: - Layout
 
     // offline when the stream failed, even if song info still loads
     private var badgeConnectivity: Connectivity {
@@ -119,6 +132,8 @@ struct LiveRadioView: View {
         }
     }
 
+    // MARK: - Artwork
+
     private var artwork: some View {
         GlowingArtwork(
             url: model.nowPlaying.artworkURL,
@@ -132,6 +147,8 @@ struct LiveRadioView: View {
             }
         )
     }
+
+    // MARK: - Captions
 
     private var captions: CaptionCoordinator {
         model.captions
@@ -203,6 +220,8 @@ struct LiveRadioView: View {
         .accessibilityLabel("Caption Options")
     }
 
+    // MARK: - Titles and controls
+
     private var metadata: some View {
         MetadataDisplay(title: model.displayTitle, artist: model.displayArtist)
     }
@@ -247,6 +266,9 @@ struct LiveRadioView: View {
         .background(LinearGradient(colors: [.clear, Color(.systemBackground).opacity(0.3)], startPoint: .top, endPoint: .bottom))
     }
 
+    // MARK: - Navigation
+
+    // @ViewBuilder lets each branch return a different view
     @ViewBuilder
     private func destination(for route: LiveRoute) -> some View {
         switch route {
@@ -256,6 +278,9 @@ struct LiveRadioView: View {
     }
 }
 
+// MARK: - Preview
+
+// #Preview macro, shows this view in Xcode's canvas
 #Preview {
     LiveRadioView()
         .environmentObject(RadioPlayerModel())
@@ -263,10 +288,14 @@ struct LiveRadioView: View {
         .modelContainer(for: FavouriteTrack.self, inMemory: true)
 }
 
+// MARK: - Toolbar helpers
+
 private extension ToolbarContent {
     // ios 26 puts toolbar items on glass; hide it, older ios has none
+    // @ToolbarContentBuilder lets this return several toolbar items
     @ToolbarContentBuilder
     func hidingSharedBackground() -> some ToolbarContent {
+        // #available checks the ios version while the app runs
         if #available(iOS 26, *) {
             sharedBackgroundVisibility(.hidden)
         } else {

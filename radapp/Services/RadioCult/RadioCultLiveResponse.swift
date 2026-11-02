@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - JSON
+
 // the json from schedule/live
 struct ScheduleLiveResponse: Decodable {
     let success: Bool
@@ -16,6 +18,7 @@ struct LiveResult: Decodable {
         case status, metadata, content
     }
 
+    // init sets up a new instance
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         status = try container.decode(LiveStatus.self, forKey: .status)
@@ -72,6 +75,8 @@ struct LiveMetadata: Decodable {
     }
 }
 
+// MARK: - Converting
+
 extension ScheduleLiveResponse {
     // the song and show, in the app's own types
     func toNowPlaying() -> (track: NowPlaying, show: LiveShow?) {
@@ -80,6 +85,7 @@ extension ScheduleLiveResponse {
             show = LiveShow(name: onAirShow.title, host: nil, endsAt: nil)
         }
         // during a live show the "song" is nothing or the show's name, so keep only the show
+        // guard exits early if the check fails
         guard let metadata, show == nil || metadata.artist != nil else {
             return (.offAir, show)
         }

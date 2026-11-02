@@ -5,7 +5,10 @@ import UIKit
 final class NowPlayingController {
     private let info = MPNowPlayingInfoCenter.default()
 
+    // MARK: - Lock screen buttons
+
     // connects the system's buttons to the player, once per launch
+    // @escaping means the closure is kept and called later
     func configure(play: @escaping () -> Void, pause: @escaping () -> Void, toggle: @escaping () -> Void) {
         let commands = MPRemoteCommandCenter.shared()
         commands.playCommand.addTarget { _ in
@@ -33,6 +36,8 @@ final class NowPlayingController {
         }
     }
 
+    // MARK: - Now playing info
+
     func update(title: String, artist: String?, show: String?, isPlaying: Bool, artwork: UIImage?) {
         var values: [String: Any] = [
             MPMediaItemPropertyTitle: title,
@@ -57,7 +62,9 @@ final class NowPlayingController {
     }
 
     // nonisolated because ios calls the handler on a background thread
+    // nonisolated means not tied to the main thread
     nonisolated private static func artwork(_ image: UIImage) -> MPMediaItemArtwork {
+        // @Sendable means the closure is safe to call from another thread
         MPMediaItemArtwork(boundsSize: image.size) { @Sendable _ in
             image
         }

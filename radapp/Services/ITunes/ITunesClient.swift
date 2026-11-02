@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - Errors
+
 // an error status from the itunes search
 enum ITunesError: LocalizedError {
     case http(Int)
@@ -14,6 +16,8 @@ enum ITunesError: LocalizedError {
     }
 }
 
+// MARK: - Client
+
 // finds radiocult's songs on itunes, for the apple music link; no key needed
 struct ITunesClient {
     static let shared = ITunesClient()
@@ -23,6 +27,7 @@ struct ITunesClient {
     // the matching song, nil if itunes doesn't have it; duration picks between releases
     func track(title: String, artist: String, duration: TimeInterval? = nil) async throws -> ITunesTrack? {
         let term = TrackName.searchTerm(title: title, artist: artist)
+        // guard exits early if the check fails
         guard !term.isEmpty else {
             return nil
         }

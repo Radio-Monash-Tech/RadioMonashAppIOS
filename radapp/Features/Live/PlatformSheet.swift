@@ -1,11 +1,17 @@
 import SwiftUI
 
+// MARK: - Platform sheet
+
 // "listen on" sheet: apple music for the exact song, song.link for the rest
 struct PlatformSheet: View {
+    // MARK: - State
+
     let track: NowPlaying
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var lookup = Lookup.loading
     // bumped by try again to re-run the lookup
     @State private var attempt = 0
@@ -17,6 +23,8 @@ struct PlatformSheet: View {
         case notFound
         case failed
     }
+
+    // MARK: - Body
 
     var body: some View {
         VStack(spacing: 8) {
@@ -60,6 +68,9 @@ struct PlatformSheet: View {
         }
     }
 
+    // MARK: - Content
+
+    // @ViewBuilder lets each branch return a different view
     @ViewBuilder
     private var content: some View {
         switch lookup {
@@ -105,6 +116,7 @@ struct PlatformSheet: View {
         }
     }
 
+    // @escaping means the closure is kept and called later
     private func rowButton(action: @escaping () -> Void, @ViewBuilder label: () -> some View) -> some View {
         Button(action: action) {
             label()
@@ -112,6 +124,8 @@ struct PlatformSheet: View {
         .buttonStyle(.plain)
     }
 }
+
+// MARK: - Platform row
 
 // one service: icon, name, optional subtitle and a chevron
 private struct PlatformRow<Icon: View>: View {
@@ -148,6 +162,8 @@ private struct PlatformRow<Icon: View>: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+// MARK: - Other platforms badge
 
 // 2x2 grid of logos, since song.link has no icon of its own
 private struct OtherPlatformsBadge: View {

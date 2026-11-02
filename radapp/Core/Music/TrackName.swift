@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - Song credit
+
 // one search result's title, artist and length
 struct SongCredit {
     let title: String
@@ -7,8 +9,12 @@ struct SongCredit {
     let length: TimeInterval?
 }
 
+// MARK: - Track name
+
 // tidies song titles and artists so radiocult and itunes can be compared
 enum TrackName {
+    // MARK: - Matching
+
     // the search result that is the same song, closest to the broadcast length
     static func bestMatch<Candidate>(
         in candidates: [Candidate],
@@ -52,6 +58,8 @@ enum TrackName {
             difference(first.songCredit) < difference(second.songCredit)
         }?.candidate
     }
+
+    // MARK: - Cleaning names
 
     // lead artist and bare title, finds the song better than the full credit
     static func searchTerm(title: String, artist: String) -> String {
@@ -102,6 +110,8 @@ enum TrackName {
     static func containsWords(_ needle: String, in haystack: String) -> Bool {
         !needle.isEmpty && " \(haystack) ".contains(" \(needle) ")
     }
+
+    // MARK: - Private helpers
 
     private static func isSameSong(_ credit: SongCredit, title wantedTitle: String, artist wantedArtist: String) -> Bool {
         guard title(credit.title) == wantedTitle else {

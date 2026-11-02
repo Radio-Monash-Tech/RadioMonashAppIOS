@@ -2,6 +2,8 @@ import Foundation
 
 // what each html tag does to the parser
 extension ArticleHTMLParser {
+    // MARK: - Tags
+
     // tags whose contents never belong in the article
     private static let skippedTags: Set<String> = ["script", "style", "noscript", "iframe", "svg", "button", "select"]
 
@@ -104,6 +106,8 @@ extension ArticleHTMLParser {
             break
         }
     }
+
+    // MARK: - Images
 
     private mutating func addImage(from tag: HTMLTag) {
         // squarespace puts the real url in data-src or data-image; skip inline data: images

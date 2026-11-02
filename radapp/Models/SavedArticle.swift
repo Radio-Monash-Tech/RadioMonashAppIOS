@@ -1,9 +1,13 @@
 import Foundation
 import SwiftData
 
+// MARK: - Saved article
+
 // a bookmarked article, saved in the database
+// @Model macro, makes this class a SwiftData record saved on the device
 @Model
 final class SavedArticle {
+    // @Attribute macro, adds a rule for how SwiftData saves this property
     @Attribute(.unique) var articleID: String
     var title: String
     var excerpt: String
@@ -17,6 +21,7 @@ final class SavedArticle {
     // its photos are saved too, not just the text
     var isDownloaded: Bool = false
 
+    // init sets up a new instance
     init(article: Article, savedAt: Date = .now) {
         articleID = article.id
         title = article.title
@@ -45,6 +50,8 @@ final class SavedArticle {
         )
     }
 }
+
+// MARK: - Saving and downloading
 
 // saving, unsaving and downloading articles
 extension ModelContext {

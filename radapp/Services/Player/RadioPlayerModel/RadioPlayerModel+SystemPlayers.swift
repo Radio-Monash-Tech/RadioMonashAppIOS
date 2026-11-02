@@ -2,6 +2,8 @@ import SwiftUI
 
 // keeping the lock screen player and home screen widget up to date
 extension RadioPlayerModel {
+    // MARK: - Refresh
+
     // sends everything the lock screen and widget show
     func refreshSystemPlayers() {
         let onAir = scheduledLiveShow
@@ -21,8 +23,11 @@ extension RadioPlayerModel {
         ))
     }
 
+    // MARK: - Settings
+
     // the appearance setting, read straight from settings
     private var appearance: AppearancePreference {
+        // guard exits early if the check fails
         guard let raw = UserDefaults.standard.string(forKey: AppearancePreference.storageKey),
               let preference = AppearancePreference(rawValue: raw)
         else {
@@ -48,6 +53,8 @@ extension RadioPlayerModel {
         }
         return followed
     }
+
+    // MARK: - Upcoming shows
 
     // the next three shows today, by the melbourne date
     private var upcomingShows: [RadioWidgetSnapshot.UpcomingShow] {

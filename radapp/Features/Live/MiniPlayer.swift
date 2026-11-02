@@ -2,6 +2,7 @@ import SwiftUI
 
 // the small now-playing bar above the tab bar
 struct MiniPlayer: View {
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var player: RadioPlayerModel
     // jumps to the live tab
     let onOpen: () -> Void

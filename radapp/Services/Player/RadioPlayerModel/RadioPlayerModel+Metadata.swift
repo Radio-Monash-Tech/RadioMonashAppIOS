@@ -3,6 +3,8 @@ import UIKit
 
 // asking radiocult for the song, show and recently played
 extension RadioPlayerModel {
+    // MARK: - Poll timing
+
     private static let soonestPoll: TimeInterval = 5
     // live shows and songs with no length give no hint when they'll change
     private static let unknownEndPoll: TimeInterval = 15
@@ -10,6 +12,8 @@ extension RadioPlayerModel {
     // radiocult takes a moment to report the next song
     private static let reportingDelay: TimeInterval = 3
     private static let overdueLimit: TimeInterval = 30
+
+    // MARK: - Polling
 
     func startMetadataPolling() {
         restartPolling()
@@ -26,6 +30,7 @@ extension RadioPlayerModel {
         pollTask?.cancel()
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
+                // guard exits early if the check fails
                 guard let self else {
                     return
                 }
@@ -79,6 +84,8 @@ extension RadioPlayerModel {
         return min(untilChange + Self.reportingDelay, longest)
     }
 
+    // MARK: - Fetching
+
     func refreshMetadata() async {
         do {
             let status = try await client.liveStatus()
@@ -115,6 +122,8 @@ extension RadioPlayerModel {
         refreshLikeState()
         systemPlayers.setArtwork(showsStationLogo ? nil : nowPlaying.artworkURL)
     }
+
+    // MARK: - Helpers
 
     // only sets the property if the value is different, so screens don't redraw for nothing
     func setIfChanged<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<RadioPlayerModel, Value>, _ value: Value) {

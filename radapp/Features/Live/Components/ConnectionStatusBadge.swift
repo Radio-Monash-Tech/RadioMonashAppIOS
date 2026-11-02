@@ -3,8 +3,12 @@ import SwiftUI
 // the LIVE / BUFFERING / OFFLINE pill in the toolbar
 struct ConnectionQualityBadge: View {
     let connectivity: Connectivity
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.accentChoice) private var accent
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var pulse = false
+
+    // MARK: - Styling
 
     private var color: Color {
         switch connectivity {
@@ -34,6 +38,7 @@ struct ConnectionQualityBadge: View {
 
     // the dot pulses only while live
     private var dotOpacity: Double {
+        // guard exits early if the check fails
         guard isLive else {
             return 1
         }
@@ -49,6 +54,8 @@ struct ConnectionQualityBadge: View {
         }
         return .default
     }
+
+    // MARK: - Body
 
     var body: some View {
         HStack(spacing: 6) {

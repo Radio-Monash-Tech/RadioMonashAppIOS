@@ -1,14 +1,24 @@
 import SwiftUI
 
+// MARK: - Schedule view
+
 // the schedule tab: a day picker and that day's shows
 struct ScheduleView: View {
+    // MARK: - State
+
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var schedule: ScheduleStore
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.accentChoice) private var accent
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var selectedDay = Calendar.melbourne.startOfDay(for: .now)
     // updated every minute so the on-air row moves on
     @State private var now = Date()
+    // @AppStorage property wrapper, saved in UserDefaults and redraws when it changes
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
     @Environment(\.isLandscapePhone) private var isLandscape
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
@@ -44,6 +54,8 @@ struct ScheduleView: View {
         }
     }
 
+    // MARK: - Show list
+
     private var showList: some View {
         List {
             if !isLandscape {
@@ -66,6 +78,7 @@ struct ScheduleView: View {
         .listStyle(.plain)
     }
 
+    // @ViewBuilder lets each branch return a different view
     @ViewBuilder
     private var content: some View {
         let shows = schedule.shows(on: selectedDay)
@@ -125,9 +138,12 @@ struct ScheduleView: View {
     }
 }
 
+// MARK: - Day strip
+
 // the row of day chips, across in portrait and down in landscape
 private struct DayStrip: View {
     let days: [Date]
+    // @Binding property wrapper, reads and writes a value owned by another view
     @Binding var selection: Date
     var axis: Axis = .horizontal
 
@@ -185,6 +201,8 @@ private struct DayStrip: View {
     }
 }
 
+// MARK: - Schedule row
+
 // start and end times, title, on-air badge and hosts
 private struct ScheduleRow: View {
     let show: ScheduledShow
@@ -192,6 +210,7 @@ private struct ScheduleRow: View {
     var isFollowed = false
     @Environment(\.dynamicTypeSize) private var typeSize
     // wide enough for "00:00", so every row's titles line up
+    // @ScaledMetric property wrapper, grows with the dynamic type text size
     @ScaledMetric(relativeTo: .subheadline) private var timeWidth: CGFloat = 48
 
     // at the largest text sizes the times go above the title
@@ -248,6 +267,8 @@ private struct ScheduleRow: View {
     }
 }
 
+// MARK: - Placeholders
+
 private extension ScheduledShow {
     // a fake hour-long show for the loading rows
     static func placeholder(_ index: Int) -> ScheduledShow {
@@ -260,6 +281,8 @@ private extension ScheduledShow {
         )
     }
 }
+
+// MARK: - On air badge
 
 // the accent-coloured ON AIR pill
 struct OnAirBadge: View {
@@ -276,6 +299,9 @@ struct OnAirBadge: View {
     }
 }
 
+// MARK: - Preview
+
+// #Preview macro, shows this view in Xcode's canvas
 #Preview {
     ScheduleView()
         .environmentObject(RadioPlayerModel())

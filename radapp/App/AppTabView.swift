@@ -2,18 +2,26 @@ import SwiftUI
 import SwiftData
 
 
+// MARK: - Tabs
+
 // hashable lets swiftui compare values and see which tab is selected
 enum AppTab: Hashable {
     case live, schedule, journalism, library, search
 }
 
+// MARK: - Main screen
+
 // the main screen: tab bar, the five tabs and the mini player
 struct AppTabView: View {
+    // MARK: - Shared stores
+
     // shared stores injected by RadappApp
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
     @EnvironmentObject private var journalism: JournalismStore
     
+    // MARK: - Saved settings
+
     // read and write UserDefaults
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @AppStorage(ContrastPreference.storageKey) private var increaseContrast = false
@@ -23,12 +31,16 @@ struct AppTabView: View {
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
     @AppStorage(TextSizePreference.storageKey) private var textSizeOffset = 0
 
+    // MARK: - View state
+
     // which tab is open, always starts on live
     @State private var selection: AppTab = .live
 
     // true when a phone is turned sideways
     @Environment(\.isLandscapePhone) private var isLandscape
     
+    // MARK: - Body
+
     // increase or adjust system-wide
     var body: some View {
         TabView(selection: $selection) {
@@ -97,6 +109,8 @@ struct AppTabView: View {
         }
     }
 
+    // MARK: - Helpers
+
     // the same styling for every tab
     private var tabContent: TabContent {
         TabContent(accent: accent.color, showsMiniPlayer: selection != .live) {
@@ -104,6 +118,8 @@ struct AppTabView: View {
         }
     }
 }
+
+// MARK: - Tab tint
 
 // On iOS 26 the TabView's tint only colours the tab bar, so each tab is tinted again here.
 private struct TabContent: ViewModifier {
@@ -118,6 +134,8 @@ private struct TabContent: ViewModifier {
     }
 }
 
+// MARK: - Reminder inputs
+
 // everything the reminder schedule depends on; a change to any of them reschedules.
 // equatable being used to compare the old and the new value of the id
 private struct ReminderInputs: Equatable {
@@ -125,6 +143,8 @@ private struct ReminderInputs: Equatable {
     let followed: String
     let isEnabled: Bool
 }
+
+// MARK: - Mini player, iOS 26
 
 // mini player for ios 26 and later
 private struct MiniPlayerAccessory: ViewModifier {
@@ -147,6 +167,8 @@ private struct MiniPlayerAccessory: ViewModifier {
         }
     }
 }
+
+// MARK: - Mini player, before iOS 26
 
 // before iOS 26 there's no tab bar accessory, so each tab pins the mini player just above the tab bar.
 private struct LegacyMiniPlayerInset: ViewModifier {
@@ -171,6 +193,8 @@ private struct LegacyMiniPlayerInset: ViewModifier {
         }
     }
 }
+
+// MARK: - Preview
 
 // xcode canvas only, uses an in-memory database
 #Preview {

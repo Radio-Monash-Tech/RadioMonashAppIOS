@@ -1,6 +1,8 @@
 import AVKit
 import SwiftUI
 
+// MARK: - Utility row
+
 // captions, airplay and recently played, under the play button
 struct PlayerUtilityRow: View {
     let captionsOn: Bool
@@ -43,10 +45,13 @@ struct PlayerUtilityRow: View {
     }
 }
 
+// MARK: - Utility icon
+
 // a round icon, filled with the accent colour when on
 private struct UtilityIcon: View {
     let name: String
     let isOn: Bool
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.accentChoice) private var accent
 
     var body: some View {
@@ -58,6 +63,8 @@ private struct UtilityIcon: View {
             .contentShape(Circle())
     }
 }
+
+// MARK: - AirPlay button
 
 // the system airplay picker, for speakers, cars and tvs
 struct AirPlayButton: UIViewRepresentable {

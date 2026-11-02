@@ -11,6 +11,7 @@ extension RadioPlayerModel {
     func setSleepTimer(endingAt date: Date?) {
         sleepTimerTask?.cancel()
         sleepTimerEndsAt = date
+        // guard exits early if the check fails
         guard let date else {
             return
         }

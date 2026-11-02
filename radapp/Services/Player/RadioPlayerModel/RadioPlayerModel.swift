@@ -3,9 +3,13 @@ import Combine
 import SwiftData
 
 // the player every screen watches: stream, song info, likes and system players
+// @MainActor runs this on the main thread
 @MainActor
 final class RadioPlayerModel: ObservableObject {
 
+    // MARK: - State screens watch
+
+    // @Published property wrapper, views watching this object redraw when it changes
     @Published private(set) var state: StreamState = .idle {
         didSet {
             trackListening()
@@ -44,8 +48,13 @@ final class RadioPlayerModel: ObservableObject {
             UserDefaults.standard.set(volume, forKey: Self.volumeKey)
         }
     }
+
+    // MARK: - Settings keys
+
     private static let volumeKey = "playerVolume"
     static let resumeOnLaunchKey = "resumeOnLaunch"
+
+    // MARK: - Services
 
     let client = RadioCultClient.shared
     let stream = RadioStream()
@@ -58,6 +67,8 @@ final class RadioPlayerModel: ObservableObject {
     let listening: ListeningTracker?
     var trackHistory = TrackHistory()
 
+    // MARK: - Background work
+
     var pollTask: Task<Void, Never>?
     var foregroundObserver: AnyCancellable?
     var sleepTimerTask: Task<Void, Never>?
@@ -65,6 +76,9 @@ final class RadioPlayerModel: ObservableObject {
     var resumeAfterInterruption = false
     var isSessionPrepared = false
 
+    // MARK: - Init
+
+    // init sets up a new instance
     init(modelContext: ModelContext? = nil, schedule: ScheduleStore? = nil) {
         favourites = modelContext.map(FavouriteStore.init)
         self.schedule = schedule
@@ -91,6 +105,8 @@ final class RadioPlayerModel: ObservableObject {
             self?.toggleLike()
         }
     }
+
+    // MARK: - Display helpers
 
     // the show's name while one is on, otherwise the song
     var displayTitle: String {
@@ -126,6 +142,8 @@ final class RadioPlayerModel: ObservableObject {
     var isActive: Bool {
         state == .playing || state == .connecting
     }
+
+    // MARK: - Captions
 
     // tells captions what's on, and names it should expect to hear
     func updateCaptions() {

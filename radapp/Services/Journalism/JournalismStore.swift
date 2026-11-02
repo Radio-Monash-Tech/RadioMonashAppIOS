@@ -2,12 +2,16 @@ import Foundation
 import Combine
 
 // the articles for the journalism tab, with paging and an offline copy
+// @MainActor runs this on the main thread
 @MainActor
 final class JournalismStore: ObservableObject {
+    // MARK: - State the screen reads
+
     enum Phase: Equatable {
         case idle, loading, loaded, failed(String)
     }
 
+    // @Published property wrapper, views watching this object redraw when it changes
     @Published private(set) var articles: [Article] = []
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var isLoadingMore = false
@@ -17,6 +21,8 @@ final class JournalismStore: ObservableObject {
     // set only while showing the saved copy because loading failed
     @Published private(set) var offlineCopyDate: Date?
 
+    // MARK: - Private state
+
     private let client = SquarespaceClient.shared
     // where the next page starts; nil when there are no more
     private var nextOffset: Int64?
@@ -25,10 +31,13 @@ final class JournalismStore: ObservableObject {
     // reload after 15 minutes
     private let staleAfter: TimeInterval = 15 * 60
 
+    // MARK: - Loading and topics
+
     var hasMore: Bool {
         nextOffset != nil
     }
 
+    // init sets up a new instance
     init() {
         showSavedCopy()
     }
@@ -38,6 +47,7 @@ final class JournalismStore: ObservableObject {
         if let loadedAt, Date().timeIntervalSince(loadedAt) < staleAfter {
             return
         }
+        // guard exits early if the check fails
         guard phase != .loading else {
             return
         }
@@ -70,6 +80,8 @@ final class JournalismStore: ObservableObject {
         }
         return "articles-\(topic)"
     }
+
+    // MARK: - Fetching pages
 
     // the first page for the current topic
     func load() async {
@@ -116,6 +128,7 @@ final class JournalismStore: ObservableObject {
         }
         let topic = topic
         isLoadingMore = true
+        // defer runs when the function exits, however it exits
         defer {
             isLoadingMore = false
         }
@@ -135,6 +148,8 @@ final class JournalismStore: ObservableObject {
             loadMoreFailed = !Self.isCancellation(error)
         }
     }
+
+    // MARK: - Error helpers
 
     // the load was cancelled, not failed
     private static func isCancellation(_ error: Error) -> Bool {

@@ -2,8 +2,11 @@ import AVFoundation
 import Combine
 
 // the phone's audio set up for radio, and the system events the player reacts to
+// @MainActor runs this on the main thread
 @MainActor
 final class RadioAudioSession {
+    // MARK: - Events
+
     enum Event {
         // a call or alarm took the audio
         case interruptionBegan
@@ -17,6 +20,8 @@ final class RadioAudioSession {
     var onEvent: ((Event) -> Void)?
     private var subscriptions = Set<AnyCancellable>()
 
+    // MARK: - Setup
+
     // playback keeps playing when locked, ignores the silent switch and gets the lock screen controls
     func configure() async throws {
         try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
@@ -24,10 +29,14 @@ final class RadioAudioSession {
     }
 
     // switching the session on can block, so it runs off the main thread
+    // @concurrent runs this async function off the caller's thread
     @concurrent
+    // nonisolated means not tied to the main thread
     nonisolated static func activate() async throws {
         try AVAudioSession.sharedInstance().setActive(true)
     }
+
+    // MARK: - System notifications
 
     func observe() {
         let center = NotificationCenter.default
@@ -58,6 +67,7 @@ final class RadioAudioSession {
             .sink { [weak self] note in
                 let rawReason = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
                 let reason = rawReason.flatMap(AVAudioSession.RouteChangeReason.init(rawValue:))
+                // guard exits early if the check fails
                 guard reason == .oldDeviceUnavailable else {
                     return
                 }

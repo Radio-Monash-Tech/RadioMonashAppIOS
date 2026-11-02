@@ -1,6 +1,9 @@
 import SwiftUI
 
+// MARK: - Colour vision
+
 // the colour vision setting: a filter over the whole app for each type of colour blindness
+// nonisolated means not tied to the main thread
 nonisolated enum ColourVision: String, CaseIterable, Identifiable {
     case standard
     case protanomaly, protanopia
@@ -8,9 +11,13 @@ nonisolated enum ColourVision: String, CaseIterable, Identifiable {
     case tritanomaly, tritanopia
     case monochromacy
 
+    // MARK: - Storage
+
     static let storageKey = "colourVision"
     // kept in the app group with the accent colour
     static let store = AccentChoice.store
+
+    // MARK: - Display text
 
     var id: String {
         rawValue
@@ -58,6 +65,8 @@ nonisolated enum ColourVision: String, CaseIterable, Identifiable {
         }
     }
 
+    // MARK: - Filter values
+
     // hue shift per type, picked by simulating each type's vision (Machado et al. 2009)
     fileprivate var hueShift: Angle {
         switch self {
@@ -95,6 +104,8 @@ nonisolated enum ColourVision: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - View modifier
+
 extension View {
     // applies the filter to this view and everything in it; standard leaves colours as they are
     func colourVisionFilter(_ vision: ColourVision) -> some View {
@@ -109,7 +120,10 @@ extension View {
     }
 }
 
+// MARK: - Stored filter
+
 private struct StoredColourVisionFilter: ViewModifier {
+    // @AppStorage property wrapper, saved in UserDefaults and redraws when it changes
     @AppStorage(ColourVision.storageKey, store: ColourVision.store) private var vision: ColourVision = .standard
 
     func body(content: Content) -> some View {

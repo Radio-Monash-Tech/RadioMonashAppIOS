@@ -2,25 +2,41 @@ import AVFoundation
 import Synchronization
 
 // passes audio from the real-time thread to captions without locking, mixed down to mono
+// nonisolated means not tied to the main thread, @unchecked Sendable promises it's thread-safe, the compiler can't check
 nonisolated final class AudioRingBuffer: @unchecked Sendable {
+    // MARK: - Storage
+
+    // how many samples fit before it wraps around
     let capacity: Int
+    // the raw memory the samples live in, fixed size, so writing never allocates
     private let samples: UnsafeMutablePointer<Float>
-    // running totals; the slot is the total modulo capacity
+    // atomic so the audio thread and drain task can share them without a lock
+    // total samples ever written, only the audio thread changes it
     private let written = Atomic<Int>(0)
+    // total samples ever read, only the drain task changes it
     private let read = Atomic<Int>(0)
 
+    // MARK: - Setup
+
+    // sets aside the memory once, filled with silence
+    // init sets up a new instance
     init(capacity: Int) {
         self.capacity = capacity
         samples = .allocate(capacity: capacity)
         samples.initialize(repeating: 0, count: capacity)
     }
 
+    // raw memory isn't freed automatically, so free it here
+    // deinit runs when the object is freed
     deinit {
         samples.deallocate()
     }
 
-    // called on the real-time thread; if the reader is a whole buffer behind, new audio is dropped
+    // MARK: - Writing, on the audio thread
+
+    // called on the real-time thread, if the reader is a whole buffer behind, new audio is dropped
     func write(_ buffers: UnsafeMutableAudioBufferListPointer, frames: Int, channels: Int, interleaved: Bool) {
+        // guard exits early if the check fails
         guard channels > 0 else {
             return
         }
@@ -60,6 +76,8 @@ nonisolated final class AudioRingBuffer: @unchecked Sendable {
         written.store(start + count, ordering: .releasing)
     }
 
+    // MARK: - Reading, on the drain task
+
     // copies out up to maxCount samples and returns how many
     func read(into destination: UnsafeMutablePointer<Float>, maxCount: Int) -> Int {
         let start = read.load(ordering: .relaxed)
@@ -74,6 +92,7 @@ nonisolated final class AudioRingBuffer: @unchecked Sendable {
         return count
     }
 
+    // samples written but not read yet
     var availableToRead: Int {
         written.load(ordering: .acquiring) - read.load(ordering: .relaxed)
     }

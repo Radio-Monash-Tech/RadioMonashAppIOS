@@ -19,6 +19,7 @@ struct ListeningStats {
     let topShows: [ShowTotal]
     let topArtists: [ArtistLikes]
 
+    // init sets up a new instance
     init(period: StatsPeriod, segments allSegments: [ListeningSegment], likes allLikes: [FavouriteTrack],
          now: Date = .now, calendar: Calendar = .melbourne) {
         let window = StatsWindow(period: period, now: now, calendar: calendar)

@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - JSON
+
 // the json from streaming/history/latest-results
 struct HistoryResponse: Decodable {
     let success: Bool
@@ -13,6 +15,8 @@ struct HistoryEntry: Decodable {
     let artist: String?
     let artwork: ArtworkVariants?
 }
+
+// MARK: - Converting
 
 extension HistoryResponse {
     // turned into the app's own played tracks

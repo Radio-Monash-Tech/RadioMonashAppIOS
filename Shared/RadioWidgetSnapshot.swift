@@ -1,7 +1,10 @@
 import Foundation
 
 // what the app hands the widget, saved in the app group; widgets can't reach the player themselves
+// nonisolated means not tied to the main thread
 nonisolated struct RadioWidgetSnapshot: Codable, Equatable {
+    // MARK: - Upcoming show
+
     // one show in "up next"
     struct UpcomingShow: Codable, Hashable {
         var start: Date
@@ -9,6 +12,8 @@ nonisolated struct RadioWidgetSnapshot: Codable, Equatable {
         var hosts: String?
         var isFollowed: Bool
     }
+
+    // MARK: - Contents
 
     // a show is on, not the playlist
     var isOnAir: Bool
@@ -26,10 +31,13 @@ nonisolated struct RadioWidgetSnapshot: Codable, Equatable {
     // true dark, false light, nil follows ios
     var isDark: Bool?
 
+    // MARK: - Saving and loading
+
     static let widgetKind = "RadioWidget"
     private static let storageKey = "radioWidgetSnapshot"
 
     static func load() -> RadioWidgetSnapshot? {
+        // guard exits early if the check fails
         guard let data = AccentChoice.store.data(forKey: storageKey) else {
             return nil
         }
@@ -37,6 +45,7 @@ nonisolated struct RadioWidgetSnapshot: Codable, Equatable {
     }
 
     // false when nothing changed, so the widget isn't reloaded for no reason
+    // @discardableResult means callers can ignore the return value
     @discardableResult
     func save() -> Bool {
         guard self != Self.load(), let data = try? JSONEncoder().encode(self) else {
@@ -45,6 +54,8 @@ nonisolated struct RadioWidgetSnapshot: Codable, Equatable {
         AccentChoice.store.set(data, forKey: Self.storageKey)
         return true
     }
+
+    // MARK: - Placeholder
 
     // shown in the widget gallery and before the app has run
     static let placeholder = RadioWidgetSnapshot(

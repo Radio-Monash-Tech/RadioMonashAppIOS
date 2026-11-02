@@ -2,13 +2,19 @@ import AVFoundation
 import Synchronization
 import Observation
 
-// what the caption screens read; runs captions only while they're on and the radio plays
+// what the caption screens read, runs captions only while they're on and the radio plays
+// @MainActor runs this on the main thread
 @MainActor
+// @Observable macro, SwiftUI redraws when these properties change
 @Observable
 final class CaptionCoordinator {
+    // MARK: - State the screens read
+
+    // whether the speech model is ready
     private(set) var availability: CaptionAvailability = .checking
     // the CC switch, remembered between launches
     var isEnabled = UserDefaults.standard.bool(forKey: Keys.enabled) {
+        // run immediately after the value changed
         didSet {
             UserDefaults.standard.set(isEnabled, forKey: Keys.enabled)
             refresh()
@@ -21,6 +27,7 @@ final class CaptionCoordinator {
             setIncludesMusic?(captionsMusic)
         }
     }
+    // caption size from the Aa menu
     var textSize = CaptionTextSize(rawValue: UserDefaults.standard.string(forKey: Keys.textSize) ?? "") ?? .system {
         didSet {
             UserDefaults.standard.set(textSize.rawValue, forKey: Keys.textSize)
@@ -29,28 +36,45 @@ final class CaptionCoordinator {
     // whether the intro sheet has been seen
     private(set) var hasSeenIntro = UserDefaults.standard.bool(forKey: Keys.seenIntro)
 
-    // talk or music while running; nil while starting or stopped
+    // talk or music while running, nil while starting or stopped
     private(set) var mode: CaptionMode?
+    // whether the engine is running right now
     private(set) var isRunning = false
     // finished lines, oldest first
     private(set) var lines: [CaptionLine] = []
-    // the line still being heard; its words may change
+    // the line still being heard, its words may change
     private(set) var liveLine: CaptionLine?
+    // shown on screen when something goes wrong
     private(set) var errorMessage: String?
+    // whether the radio is playing
     private(set) var isPlaying = false
+    
+    // MARK: - Private state
 
+    // Disables observation tracking of a property.
     @ObservationIgnored private let bridge = AudioTapBridge()
+    // the current connection, weak so old ones can be freed
     @ObservationIgnored private weak var playerItem: AVPlayerItem?
+    // the english picked by the model check
     @ObservationIgnored private var locale: Locale?
+    // receives engine events, nil means captions are stopped
     @ObservationIgnored private var runTask: Task<Void, Never>?
+    // passes the station hint into the running engine
     @ObservationIgnored private var setHint: ((ContentClassifier.StationHint) -> Void)?
+    // passes the music setting into the running engine
     @ObservationIgnored private var setIncludesMusic: ((Bool) -> Void)?
     // reused when the live line finishes, so it doesn't jump
     @ObservationIgnored private var liveLineID = UUID()
+    // the show on air, nil during the automated playlist
     @ObservationIgnored private var liveShow: LiveShow?
+    // the current song, for lyrics labels
     @ObservationIgnored private var nowPlaying: NowPlaying = .offAir
+    // names that help the recogniser spell
     @ObservationIgnored private var vocabulary: [String] = []
 
+    // MARK: - Settings keys
+
+    // userdefaults key names, kept in one place
     private enum Keys {
         static let enabled = "captionsEnabled"
         static let textSize = "captionTextSize"
@@ -58,11 +82,17 @@ final class CaptionCoordinator {
         static let seenIntro = "captionsSeenIntro"
     }
 
+    // MARK: - Init
+
+    // checks the model as soon as the app starts
+    // init sets up a new instance
     init() {
         Task {
             await checkAvailability()
         }
     }
+
+    // MARK: - Display helpers
 
     // lines in a row from the same speaker, grouped for display
     var groups: [CaptionGroup] {
@@ -91,11 +121,14 @@ final class CaptionCoordinator {
         }
     }
 
+    // MARK: - Setup and model download
+
     // the intro and model download come before captions first turn on
     var needsSetup: Bool {
         !hasSeenIntro || availability == .needsDownload
     }
 
+    // called by turn on captions in the setup sheet
     func finishSetup() {
         hasSeenIntro = true
         UserDefaults.standard.set(true, forKey: Keys.seenIntro)
@@ -104,6 +137,7 @@ final class CaptionCoordinator {
 
     // finds out whether the speech model is ready
     func checkAvailability() async {
+        // guard exits early if the check fails, #available checks the ios version while the app runs
         guard #available(iOS 26, *) else {
             availability = .unsupported("Live Captions need iOS 26 or later.")
             return
@@ -114,6 +148,7 @@ final class CaptionCoordinator {
         refresh()
     }
 
+    // downloads the speech model and tracks its progress
     func downloadModel() async {
         guard #available(iOS 26, *), let locale else {
             return
@@ -132,7 +167,9 @@ final class CaptionCoordinator {
         refresh()
     }
 
-    // a new connection is about to play; the tap goes on now, even with captions off
+    // MARK: - Player events
+
+    // a new connection is about to play, the tap goes on now, even with captions off
     func playerItemReady(_ item: AVPlayerItem) {
         guard item !== playerItem else {
             return
@@ -140,13 +177,14 @@ final class CaptionCoordinator {
         // a reconnect brings a new item, so move to it
         stop()
         playerItem = item
-        // skipped where captions can never run; still checking counts as maybe
+        // skipped where captions can never run, still checking counts as maybe
         if #available(iOS 26, *), isSupported || availability == .checking {
             bridge.install(on: item)
         }
         refresh()
     }
 
+    // the radio started or stopped
     func playbackChanged(isPlaying: Bool) {
         self.isPlaying = isPlaying
         refresh()
@@ -159,6 +197,8 @@ final class CaptionCoordinator {
         self.vocabulary = vocabulary
         setHint?(hint)
     }
+
+    // MARK: - Starting and stopping
 
     // no presenter on air means nobody to caption
     private var hint: ContentClassifier.StationHint {
@@ -178,6 +218,7 @@ final class CaptionCoordinator {
         }
     }
 
+    // starts the tap copying and runs a new engine in the background
     private func start() {
         guard #available(iOS 26, *), let item = playerItem, let locale else {
             return
@@ -215,6 +256,7 @@ final class CaptionCoordinator {
         }
     }
 
+    // stops the tap, which winds the engine down
     private func stop() {
         // ending the audio winds down the engine
         bridge.stopCapture()
@@ -224,10 +266,13 @@ final class CaptionCoordinator {
         setIncludesMusic = nil
         isRunning = false
         mode = nil
-        // finished lines stay after pausing; only the live one goes
+        // finished lines stay after pausing, only the live one goes
         liveLine = nil
     }
 
+    // MARK: - Engine events
+
+    // turns engine events into lines on screen
     private func handle(_ event: CaptionEvent) {
         switch event {
         case .mode(let newMode):
@@ -261,7 +306,7 @@ final class CaptionCoordinator {
         }
     }
 
-    // enough for the live captions; nothing is saved
+    // enough for the live captions, nothing is saved
     private static let maxLines = 40
 
     // the host while talking, the song while music plays

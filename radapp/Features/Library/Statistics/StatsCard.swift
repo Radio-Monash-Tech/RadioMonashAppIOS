@@ -1,10 +1,13 @@
 import SwiftUI
 
+// MARK: - Card header
+
 // a card title with something optional on the right
 struct CardHeader<Trailing: View>: View {
     let title: String
     let trailing: Trailing
 
+    // @ViewBuilder lets each branch return a different view, init sets up a new instance
     init(_ title: String, @ViewBuilder trailing: () -> Trailing) {
         self.title = title
         self.trailing = trailing()
@@ -21,6 +24,8 @@ struct CardHeader<Trailing: View>: View {
         }
     }
 }
+
+// MARK: - Card style
 
 extension View {
     // the rounded card background every statistics section uses

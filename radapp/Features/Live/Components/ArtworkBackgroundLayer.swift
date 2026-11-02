@@ -3,6 +3,7 @@ import SwiftUI
 // the blurred cover art behind the live player
 struct ArtworkBackgroundLayer: View {
     let url: URL?
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
@@ -19,6 +20,7 @@ struct ArtworkBackgroundLayer: View {
     }
 
     // the cover, blurred and faded, with a gradient on top
+    // @ViewBuilder lets each branch return a different view
     @ViewBuilder
     private func artwork(size: CGSize) -> some View {
         CachedArtwork(url: url) { image in

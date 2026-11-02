@@ -3,8 +3,12 @@ import SwiftUI
 // the big card: total time, trend and the bar chart
 struct TotalListeningCard: View {
     let stats: ListeningStats
+    // @Binding property wrapper, reads and writes a value owned by another view
     @Binding var selection: Int?
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.accentChoice) private var accent
+
+    // MARK: - Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -41,6 +45,8 @@ struct TotalListeningCard: View {
         }
         .statsCard()
     }
+
+    // MARK: - Parts
 
     // "6h 05m" in big numbers
     private var total: some View {

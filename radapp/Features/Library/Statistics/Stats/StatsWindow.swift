@@ -2,6 +2,8 @@ import Foundation
 
 // the week, month or year being looked at, on the melbourne calendar
 struct StatsWindow {
+    // MARK: - Window
+
     let period: StatsPeriod
     // when it starts and ends
     let interval: DateInterval
@@ -10,6 +12,9 @@ struct StatsWindow {
     // dates shown in melbourne time
     let format: Date.FormatStyle
 
+    // MARK: - Init
+
+    // init sets up a new instance
     init(period: StatsPeriod, now: Date, calendar: Calendar) {
         self.period = period
         self.now = now
@@ -17,6 +22,8 @@ struct StatsWindow {
         interval = calendar.dateInterval(of: period.component, for: now) ?? DateInterval(start: now, duration: 0)
         format = Date.FormatStyle(timeZone: calendar.timeZone)
     }
+
+    // MARK: - Filtering
 
     // only the listening that falls inside the window
     func segments(in allSegments: [ListeningSegment]) -> [ListeningSegment] {
@@ -43,6 +50,8 @@ struct StatsWindow {
             sum + segment.overlap(with: interval)
         }
     }
+
+    // MARK: - Label
 
     // "3–9 Nov", "November" or "2026"
     var label: String {

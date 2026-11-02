@@ -1,24 +1,46 @@
 import SwiftUI
 
+// MARK: - Live captions view
+
 // captions in place of the artwork, newest line at the bottom
 struct LiveCaptionsView: View {
+    // MARK: - Inputs
+
+    // the shared caption state
     let captions: CaptionCoordinator
+    // song or show name for the top row
     let title: String
+    // shown under the title, if there is one
     let artist: String?
+    // cover art for the top row
     let artworkURL: URL?
+    // use the station logo instead of the artwork
     let showsStationLogo: Bool
 
+    // MARK: - State
+
     // the caption size set in the phone's accessibility settings
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var systemSize = CaptionStyle.systemRelativeSize
+    // talk text size, grows with dynamic type
+    // @ScaledMetric property wrapper, grows with the dynamic type text size
     @ScaledMetric(relativeTo: .title3) private var hostSize: CGFloat = 20
+    // lyrics text size, a bit bigger
     @ScaledMetric(relativeTo: .title2) private var lyricSize: CGFloat = 25
+    // skips animations when reduce motion is on
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    // used to recheck the caption size when the app comes back
     @Environment(\.scenePhase) private var scenePhase
+
+    // MARK: - Size
 
     // the Aa size combined with the system size
     private var scale: CGFloat {
         captions.textSize.scale(system: systemSize)
     }
+
+    // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,6 +70,8 @@ struct LiveCaptionsView: View {
         }
     }
 
+    // MARK: - Now playing row
+
     // small artwork, title and artist
     private var nowPlayingRow: some View {
         HStack(spacing: 12) {
@@ -73,6 +97,8 @@ struct LiveCaptionsView: View {
         }
         .accessibilityElement(children: .combine)
     }
+
+    // MARK: - Caption list
 
     // the scrolling captions, kept at the bottom as lines arrive
     private var captionScroll: some View {
@@ -105,6 +131,7 @@ struct LiveCaptionsView: View {
         }
     }
 
+    // scrolls to the newest line
     private func scrollToEnd(_ proxy: ScrollViewProxy) {
         if reduceMotion {
             proxy.scrollTo("bottom", anchor: .bottom)
@@ -129,7 +156,7 @@ struct LiveCaptionsView: View {
         .accessibilityElement(children: .combine)
     }
 
-    // one line; lyrics are bigger and bolder, the live line has a cursor
+    // one line, lyrics are bigger and bolder, the live line has a cursor
     private func lineView(_ line: CaptionLine, isLive: Bool, fromEnd: Int) -> some View {
         let isLyric: Bool
         if case .lyrics = line.speaker {
@@ -172,6 +199,9 @@ struct LiveCaptionsView: View {
         }
     }
 
+    // MARK: - Empty state and status
+
+    // @ViewBuilder lets each branch return a different view
     @ViewBuilder
     private var emptyState: some View {
         if captions.isRunning, captions.mode == .talk || captions.captionsMusic {
@@ -214,9 +244,13 @@ struct LiveCaptionsView: View {
     }
 }
 
+// MARK: - Speaker label
+
 // "THE ARVO SHOW · HOST" or "LYRICS · SONG" above a group
 struct SpeakerLabel: View {
+    // who the group belongs to
     let speaker: CaptionSpeaker
+    // lyrics labels use the accent colour
     @Environment(\.accentChoice) private var accent
 
     var body: some View {
@@ -233,8 +267,11 @@ struct SpeakerLabel: View {
     }
 }
 
+// MARK: - Compact label style
+
 // a small icon and spaced-out text on one line
 private struct CompactLabelStyle: LabelStyle {
+    // lays out the icon and title
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 6) {
             configuration.icon.font(.caption2.weight(.bold))
@@ -251,11 +288,17 @@ private extension LabelStyle where Self == CompactLabelStyle {
     }
 }
 
+// MARK: - Live caret
+
 // the blinking cursor after the line still being heard
 struct LiveCaret: View {
+    // matches the line's text height
     var height: CGFloat
+    // toggled to make it blink
     @State private var visible = true
+    // stays still with reduce motion
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    // the cursor's colour
     @Environment(\.accentChoice) private var accent
 
     var body: some View {
@@ -265,6 +308,7 @@ struct LiveCaret: View {
             .opacity(visible ? 1 : 0)
             .onAppear {
                 // stays still with reduce motion
+                // guard exits early if the check fails
                 guard !reduceMotion else {
                     return
                 }

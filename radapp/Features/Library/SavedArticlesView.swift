@@ -3,7 +3,9 @@ import SwiftData
 
 // every bookmarked article, newest first
 struct SavedArticlesView: View {
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.modelContext) private var modelContext
+    // @Query macro, loads SwiftData records and keeps them up to date
     @Query(sort: \SavedArticle.savedAt, order: .reverse) private var savedArticles: [SavedArticle]
 
     var body: some View {

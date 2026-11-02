@@ -2,11 +2,18 @@ import SwiftUI
 
 // searches shows, articles and recently played tracks
 struct SearchView: View {
+    // MARK: - State
+
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
     @EnvironmentObject private var journalism: JournalismStore
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var query = ""
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.isLandscapePhone) private var isLandscape
+
+    // MARK: - Matches
 
     // the search without spaces at the ends
     private var trimmed: String {
@@ -38,6 +45,8 @@ struct SearchView: View {
                 || track.artist.localizedCaseInsensitiveContains(trimmed)
         }
     }
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
@@ -71,6 +80,9 @@ struct SearchView: View {
         .searchable(text: $query, prompt: "Shows, articles, tracks")
     }
 
+    // MARK: - Result sections
+
+    // @ViewBuilder lets each branch return a different view
     @ViewBuilder
     private var results: some View {
         if isLandscape {
@@ -151,6 +163,9 @@ struct SearchView: View {
     }
 }
 
+// MARK: - Preview
+
+// #Preview macro, shows this view in Xcode's canvas
 #Preview {
     SearchView()
         .environmentObject(RadioPlayerModel())

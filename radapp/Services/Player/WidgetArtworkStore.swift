@@ -2,13 +2,17 @@ import CryptoKit
 import UIKit
 
 // saves the song's cover where the home screen widget can read it
+// @MainActor runs this on the main thread
 @MainActor
 final class WidgetArtworkStore {
     // big enough for the small widget at 3x
     private let pixelSize: CGFloat = 512
 
+    // MARK: - Saving
+
     // the cover's name for the widget, or nil if it couldn't be saved
     func save(_ url: URL) async -> String? {
+        // guard exits early if the check fails
         guard let directory = WidgetArtwork.directory else {
             return nil
         }
@@ -35,6 +39,8 @@ final class WidgetArtworkStore {
         removeFiles(in: directory, except: [largeName])
         return name
     }
+
+    // MARK: - File helpers
 
     // a square copy at the given pixel size
     private func resized(_ image: UIImage, to pixelSize: CGFloat) -> UIImage {

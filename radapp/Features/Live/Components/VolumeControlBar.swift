@@ -2,12 +2,16 @@ import SwiftUI
 import AVFoundation
 import MediaPlayer
 
+// MARK: - Volume bar
+
 // the mute button and volume slider
 struct VolumeControlBar: View {
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var isMuted: Bool
     @State private var systemVolume = AVAudioSession.sharedInstance().outputVolume
     private let onMuteChange: (Bool) -> Void
 
+    // @escaping means the closure is kept and called later, init sets up a new instance
     init(isMuted: Bool, onMuteChange: @escaping (Bool) -> Void) {
         _isMuted = State(initialValue: isMuted)
         self.onMuteChange = onMuteChange
@@ -49,9 +53,13 @@ struct VolumeControlBar: View {
     }
 }
 
+// MARK: - Volume slider
+
+// #if only compiles this part when the condition is true
 #if targetEnvironment(simulator)
 // the simulator has no phone volume, so it gets a plain slider for the stream
 private struct SystemVolumeSlider: View {
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var player: RadioPlayerModel
     @State private var volume: Float = 1
 

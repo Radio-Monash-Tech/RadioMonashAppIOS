@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - JSON
+
 // the json from itunes search
 struct ITunesSearchResponse: Decodable {
     let resultCount: Int
@@ -16,10 +18,13 @@ struct ITunesSong: Decodable {
     let trackTimeMillis: Double?
 }
 
+// MARK: - Matching
+
 extension ITunesSearchResponse {
     // the result that is the same song
     func bestMatch(title: String, artist: String, duration: TimeInterval?) -> ITunesTrack? {
         let match = TrackName.bestMatch(in: results, title: title, artist: artist, duration: duration) { song in
+            // guard exits early if the check fails
             guard let trackName = song.trackName, let artistName = song.artistName else {
                 return nil
             }
@@ -32,6 +37,8 @@ extension ITunesSearchResponse {
         return match?.toTrack()
     }
 }
+
+// MARK: - Converting
 
 private extension ITunesSong {
     // the app's own type, nil if anything needed is missing

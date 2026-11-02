@@ -4,6 +4,7 @@ struct TopShowsCard: View {
     let shows: [ListeningStats.ShowTotal]
     // finds the show's page, nil if it can't be opened
     let series: (ListeningStats.ShowTotal) -> ShowSeries?
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.accentChoice) private var accent
 
     var body: some View {

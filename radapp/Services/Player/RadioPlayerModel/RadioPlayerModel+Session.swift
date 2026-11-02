@@ -2,8 +2,11 @@ import Foundation
 
 // audio set-up at launch, and reacting to calls and unplugged headphones
 extension RadioPlayerModel {
+    // MARK: - Launch set-up
+
     // runs once per launch, even if the root view's task runs again
     func prepareSession() {
+        // guard exits early if the check fails
         guard !isSessionPrepared else {
             return
         }
@@ -39,6 +42,8 @@ extension RadioPlayerModel {
             }
         }
     }
+
+    // MARK: - Audio events
 
     func handle(_ event: RadioAudioSession.Event) {
         switch event {

@@ -1,17 +1,27 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Recently played sheet
+
 // the song on air, then what played before it, with like and share
 struct RecentlyPlayedSheet: View {
+    // MARK: - State
+
     // opens the full history
     let onSeeAll: () -> Void
 
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var model: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
+    // @Query macro, loads SwiftData records and keeps them up to date
     @Query private var favourites: [FavouriteTrack]
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var sharingTrack: ShareableTrack?
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accentChoice) private var accent
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
@@ -63,7 +73,10 @@ struct RecentlyPlayedSheet: View {
         .presentationDragIndicator(.visible)
     }
 
+    // MARK: - Rows
+
     // the song on air, or the show when no song is named
+    // @ViewBuilder lets each branch return a different view
     @ViewBuilder
     private var nowRow: some View {
         if model.isIdentifiedTrack {
@@ -90,6 +103,7 @@ struct RecentlyPlayedSheet: View {
 
     // nil hides the heart when the song can't be liked
     private var nowPlayingLikeAction: (() -> Void)? {
+        // guard exits early if the check fails
         guard model.canLikeCurrentTrack else {
             return nil
         }
@@ -117,6 +131,9 @@ struct RecentlyPlayedSheet: View {
         }
     }
 
+    // MARK: - Swipe actions
+
+    // @escaping means the closure is kept and called later
     private func likeAction(isLiked: Bool, toggle: @escaping () -> Void) -> some View {
         Button(action: toggle) {
             Label(isLiked ? "Unlike" : "Like", systemImage: isLiked ? "heart.slash.fill" : "heart.fill")
@@ -133,6 +150,8 @@ struct RecentlyPlayedSheet: View {
         .tint(.orange)
     }
 }
+
+// MARK: - Track row
 
 // artwork, title, artist, "Now" or the time, and a heart
 private struct TrackRow: View {

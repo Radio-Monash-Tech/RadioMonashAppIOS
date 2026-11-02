@@ -1,11 +1,16 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Liked songs view
+
 // every song the user hearted, newest first
 struct LikedSongsView: View {
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var player: RadioPlayerModel
+    // @Query macro, loads SwiftData records and keeps them up to date
     @Query(sort: \FavouriteTrack.savedAt, order: .reverse) private var tracks: [FavouriteTrack]
     // the song being shared, opens the share sheet
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var sharingTrack: ShareableTrack?
 
     var body: some View {
@@ -56,6 +61,8 @@ struct LikedSongsView: View {
     }
 }
 
+// MARK: - Liked song row
+
 // cover, title, artist · show, and the date it was liked
 private struct LikedSongRow: View {
     let track: FavouriteTrack
@@ -92,6 +99,9 @@ private struct LikedSongRow: View {
     }
 }
 
+// MARK: - Preview
+
+// #Preview macro, shows this view in Xcode's canvas
 #Preview {
     NavigationStack {
         LikedSongsView()

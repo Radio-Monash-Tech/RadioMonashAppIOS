@@ -2,6 +2,8 @@ import UIKit
 
 // uikit scroll view that pinches, pans and double-tap zooms one image
 final class PanZoomImageView: UIScrollView, UIScrollViewDelegate {
+    // MARK: - Image and taps
+
     // called on a single tap
     var onSingleTap: () -> Void = {}
 
@@ -18,6 +20,8 @@ final class PanZoomImageView: UIScrollView, UIScrollViewDelegate {
 
     // display the image
     private let imageView = UIImageView()
+
+    // MARK: - Setup
 
     // created in code
     override init(frame: CGRect) {
@@ -78,6 +82,8 @@ final class PanZoomImageView: UIScrollView, UIScrollViewDelegate {
         singleTapRecognizer.require(toFail: doubleTapRecognizer)
         addGestureRecognizer(singleTapRecognizer)
     }
+
+    // MARK: - Zooming and taps
 
     // tells the scroll view which view to zoom
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {

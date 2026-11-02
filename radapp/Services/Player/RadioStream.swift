@@ -3,8 +3,11 @@ import Combine
 import UIKit
 
 // the connection to the station's audio; rides out buffering and reconnects when it drops
+// @MainActor runs this on the main thread
 @MainActor
 final class RadioStream {
+    // MARK: - State the player model reads
+
     private(set) var state: StreamState = .idle {
         didSet {
             onStateChange?(state)
@@ -25,6 +28,8 @@ final class RadioStream {
         }
     }
 
+    // MARK: - Connection details
+
     // the station's radiocult stream
     private let url = URL(string: "https://radio-monash.radiocult.fm/stream")!
 
@@ -39,6 +44,8 @@ final class RadioStream {
 
     private static let stallTimeout: TimeInterval = 12
     private static let maxReconnectAttempts = 6
+
+    // MARK: - Playback controls
 
     // always a fresh connection; a paused live stream goes stale and plays silence
     func play() {
@@ -57,6 +64,8 @@ final class RadioStream {
         tearDown()
         state = .failed(message)
     }
+
+    // MARK: - Connecting
 
     // connects and watches for ready, stalls and drops
     private func start() {
@@ -77,6 +86,7 @@ final class RadioStream {
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             let status = item.status
             Task { @MainActor [weak self] in
+                // guard exits early if the check fails
                 guard let self, self.player?.currentItem === item else {
                     return
                 }
@@ -142,6 +152,8 @@ final class RadioStream {
         endReconnectBackgroundTask()
     }
 
+    // MARK: - Buffering and reconnecting
+
     private func timeControlStatusChanged(_ status: AVPlayer.TimeControlStatus) {
         switch status {
         case .playing:
@@ -201,6 +213,8 @@ final class RadioStream {
             self.beginReconnectBackgroundTask()
         }
     }
+
+    // MARK: - Background time
 
     private func beginReconnectBackgroundTask() {
         reconnectBackgroundTask = UIApplication.shared.beginBackgroundTask { [weak self] in

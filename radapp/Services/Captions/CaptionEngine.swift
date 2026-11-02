@@ -1,22 +1,37 @@
 import AVFoundation
 import Synchronization
 
+// MARK: - Events
+
 // what the caption pipeline reports back
+// nonisolated means not tied to the main thread
 nonisolated enum CaptionEvent: Sendable {
+    // talk or music changed
     case mode(CaptionMode)
+    // words still coming in
     case volatile(String)
+    // a finished line
     case final(String)
+    // something went wrong, with a message to show
     case failed(String)
 }
 
+// MARK: - Engine
+
 // one listening stretch of captions: audio to the classifier, then to speech recognition
+// @available limits this to iOS 26 and later
 @available(iOS 26, *)
+// @unchecked Sendable promises it's thread-safe, the compiler can't check
 nonisolated final class CaptionEngine: @unchecked Sendable {
+    // decides talk or music
     let classifier = ContentClassifier()
-    // caption lyrics as well as talk; can change while running
+    // caption lyrics as well as talk, can change while running thanks to atomic
+    // Atomic can be read and written from several threads safely, without locks
     let includesMusic = Atomic<Bool>(true)
+    // apple's speech recognition
     private let service = TranscriptionService()
 
+    // runs until the audio stream ends
     func run(
         audio: AsyncStream<AVAudioPCMBuffer>,
         locale: Locale,
@@ -24,6 +39,7 @@ nonisolated final class CaptionEngine: @unchecked Sendable {
         hint: ContentClassifier.StationHint,
         events: AsyncStream<CaptionEvent>.Continuation
     ) async {
+        // defer runs when the function exits, however it exits
         defer {
             events.finish()
         }

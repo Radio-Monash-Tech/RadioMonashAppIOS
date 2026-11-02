@@ -1,15 +1,21 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Routes
+
 // the screens the library can open
 enum LibraryRoute: Hashable {
     case liked, statistics, savedArticles, followedShows, settings
 }
 
+// MARK: - Library view
+
 // the library tab: a menu of the user's own things
 struct LibraryView: View {
     // only read for the counts on each row
+    // @AppStorage property wrapper, saved in UserDefaults and redraws when it changes
     @AppStorage(StoredIDs.followedShowsKey) private var followed = StoredIDs()
+    // @Query macro, loads SwiftData records and keeps them up to date
     @Query private var likedTracks: [FavouriteTrack]
     @Query private var savedArticles: [SavedArticle]
 
@@ -55,6 +61,7 @@ struct LibraryView: View {
         }
     }
 
+    // @ViewBuilder lets each branch return a different view
     @ViewBuilder
     private func destination(for route: LibraryRoute) -> some View {
         switch route {
@@ -72,6 +79,9 @@ struct LibraryView: View {
     }
 }
 
+// MARK: - Preview
+
+// #Preview macro, shows this view in Xcode's canvas
 #Preview {
     LibraryView()
         .environmentObject(RadioPlayerModel())

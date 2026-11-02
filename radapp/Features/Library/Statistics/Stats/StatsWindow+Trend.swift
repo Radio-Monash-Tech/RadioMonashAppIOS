@@ -18,6 +18,7 @@ extension StatsWindow {
     private func previousPeriodSeconds(in allSegments: [ListeningSegment]) -> TimeInterval {
         // one second before this period is inside the previous one
         let justBefore = interval.start.addingTimeInterval(-1)
+        // guard exits early if the check fails
         guard let previous = calendar.dateInterval(of: period.component, for: justBefore) else {
             return 0
         }

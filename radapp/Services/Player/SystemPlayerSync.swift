@@ -2,8 +2,11 @@ import UIKit
 import WidgetKit
 
 // keeps the lock screen player and home screen widget in step with the app
+// @MainActor runs this on the main thread
 @MainActor
 final class SystemPlayerSync {
+    // MARK: - Snapshot
+
     // everything both of them show
     struct Snapshot {
         var state: StreamState = .idle
@@ -22,6 +25,8 @@ final class SystemPlayerSync {
         var isDark: Bool?
     }
 
+    // MARK: - Private state
+
     private let nowPlaying = NowPlayingController()
     private let widgetArtwork = WidgetArtworkStore()
     private var artworkFileName: String?
@@ -29,6 +34,9 @@ final class SystemPlayerSync {
     private var artworkTask: Task<Void, Never>?
     private var latest = Snapshot()
 
+    // MARK: - Updates
+
+    // @escaping means the closure is kept and called later
     func configure(play: @escaping () -> Void, pause: @escaping () -> Void, toggle: @escaping () -> Void) {
         nowPlaying.configure(play: play, pause: pause, toggle: toggle)
     }
@@ -41,6 +49,7 @@ final class SystemPlayerSync {
     // loads the cover for both; nil falls back to the station logo
     func setArtwork(_ url: URL?) {
         artworkTask?.cancel()
+        // guard exits early if the check fails
         guard let url else {
             artworkFileName = nil
             artworkImage = nil
@@ -63,6 +72,8 @@ final class SystemPlayerSync {
             push()
         }
     }
+
+    // MARK: - Pushing to the lock screen and widget
 
     // sends the latest snapshot to both
     private func push() {

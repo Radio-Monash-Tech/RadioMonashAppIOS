@@ -1,12 +1,16 @@
 import UIKit
 import WidgetKit
 
+// MARK: - Entry
+
 // one moment of the widget: what the app last saved, cover included
 struct RadioEntry: TimelineEntry {
     let date: Date
     let snapshot: RadioWidgetSnapshot
     let artwork: UIImage?
 }
+
+// MARK: - Provider
 
 // hands ios the widget's entries
 struct RadioProvider: TimelineProvider {
@@ -15,6 +19,7 @@ struct RadioProvider: TimelineProvider {
     }
 
     // the gallery preview gets the placeholder
+    // @escaping means the closure is kept and called later
     func getSnapshot(in context: Context, completion: @escaping (RadioEntry) -> Void) {
         if context.isPreview {
             completion(placeholder(in: context))
@@ -36,6 +41,7 @@ struct RadioProvider: TimelineProvider {
 
     // the saved cover, nil for the station logo
     private static func artwork(named name: String?) -> UIImage? {
+        // guard exits early if the check fails
         guard let name, let url = WidgetArtwork.fileURL(named: WidgetArtwork.largeFileName(for: name)) else {
             return nil
         }

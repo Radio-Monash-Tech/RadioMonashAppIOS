@@ -1,14 +1,20 @@
 import AVFoundation
 
 // converts the tapped audio (mono, 44.1 khz) into the format speech recognition wants, usually 16 khz
+// nonisolated means not tied to the main thread
 nonisolated final class AudioFormatAdapter {
+    // the format speech recognition asked for
     let outputFormat: AVAudioFormat
+    // kept between chunks so the sound joins up smoothly
     private var converter: AVAudioConverter?
 
+    // made once per caption run
+    // init sets up a new instance
     init(outputFormat: AVAudioFormat) {
         self.outputFormat = outputFormat
     }
 
+    // returns the chunk in the output format, or nil if it fails
     func convert(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
         // already the right format
         if buffer.format == outputFormat {
@@ -18,6 +24,7 @@ nonisolated final class AudioFormatAdapter {
         if converter?.inputFormat != buffer.format {
             converter = AVAudioConverter(from: buffer.format, to: outputFormat)
         }
+        // guard exits early if the check fails
         guard let converter else {
             return nil
         }

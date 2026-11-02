@@ -3,16 +3,27 @@ import SwiftData
 
 // listening time, chart, tiles, top shows and most-liked artists
 struct ListeningStatisticsView: View {
+    // MARK: - Data
+
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
     @EnvironmentObject private var player: RadioPlayerModel
     @EnvironmentObject private var schedule: ScheduleStore
     // every recorded bit of listening, oldest first
+    // @Query macro, loads SwiftData records and keeps them up to date
     @Query(sort: \ListeningSegment.start) private var segments: [ListeningSegment]
     @Query private var likes: [FavouriteTrack]
+
+    // MARK: - State
+
     // remembered between visits
+    // @AppStorage property wrapper, saved in UserDefaults and redraws when it changes
     @AppStorage("statisticsPeriod") private var period: StatsPeriod = .week
     // the bar the user picked, nil means today
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var selectedBucket: Int?
     @State private var isConfirmingReset = false
+
+    // MARK: - Body
 
     var body: some View {
         Group {
@@ -44,6 +55,8 @@ struct ListeningStatisticsView: View {
             selectedBucket = nil
         }
     }
+
+    // MARK: - Content
 
     private func content(_ stats: ListeningStats) -> some View {
         ScrollView {
@@ -98,6 +111,8 @@ struct ListeningStatisticsView: View {
         .background(Color(.systemGroupedBackground))
     }
 
+    // MARK: - Helpers
+
     // the show's page; the schedule only has this week, so older shows use what was recorded
     private func series(for show: ListeningStats.ShowTotal) -> ShowSeries? {
         if let id = show.seriesID {
@@ -113,6 +128,9 @@ struct ListeningStatisticsView: View {
     }
 }
 
+// MARK: - Preview
+
+// #Preview macro, shows this view in Xcode's canvas
 #Preview {
     NavigationStack {
         ListeningStatisticsView()

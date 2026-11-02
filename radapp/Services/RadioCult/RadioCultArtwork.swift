@@ -5,6 +5,7 @@ struct ArtworkVariants: Decodable {
     let urls: [String: URL]
 
     // bad urls are skipped instead of failing the whole response
+    // init sets up a new instance
     init(from decoder: Decoder) throws {
         let raw = try decoder.singleValueContainer().decode([String: String].self)
         urls = raw.compactMapValues(URL.init)

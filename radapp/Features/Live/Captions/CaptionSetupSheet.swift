@@ -2,9 +2,17 @@ import SwiftUI
 
 // first-time captions intro and the one-off speech model download
 struct CaptionSetupSheet: View {
+    // MARK: - Inputs
+
+    // the shared caption state
     let captions: CaptionCoordinator
+    // closes the sheet
+    // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.dismiss) private var dismiss
+    // the app's accent colour
     @Environment(\.accentChoice) private var accent
+
+    // MARK: - Body
 
     var body: some View {
         NavigationStack {
@@ -43,7 +51,10 @@ struct CaptionSetupSheet: View {
         }
     }
 
+    // MARK: - Actions
+
     // download, progress, or turn on, depending on the model
+    // @ViewBuilder lets each branch return a different view
     @ViewBuilder
     private var actions: some View {
         VStack(spacing: 10) {
@@ -87,6 +98,8 @@ struct CaptionSetupSheet: View {
         .padding(.vertical, 12)
         .background(.bar)
     }
+
+    // MARK: - Helpers
 
     // one icon, title and explanation
     private func point(_ symbol: String, _ title: String, _ detail: String) -> some View {

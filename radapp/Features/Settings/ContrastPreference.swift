@@ -1,10 +1,14 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Setting
+
 // the app's own increase contrast switch
 enum ContrastPreference {
     static let storageKey = "increaseContrast"
 }
+
+// MARK: - View modifier
 
 extension View {
     // turns on high contrast for the whole window
@@ -12,6 +16,8 @@ extension View {
         background(WindowContrastOverride(isOn: isOn))
     }
 }
+
+// MARK: - Window override
 
 // an invisible uikit view that reaches the window to change its contrast
 private struct WindowContrastOverride: UIViewRepresentable {
@@ -41,6 +47,7 @@ private struct WindowContrastOverride: UIViewRepresentable {
         }
 
         private func apply() {
+            // guard exits early if the check fails
             guard let window else {
                 return
             }

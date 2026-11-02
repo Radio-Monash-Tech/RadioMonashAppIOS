@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - JSON
+
 // the json from /journalism-all?format=json
 struct SquarespaceCollectionResponse: Decodable {
     let items: [SquarespaceItem]?
@@ -30,9 +32,12 @@ struct SquarespaceAuthor: Decodable {
     let displayName: String?
 }
 
+// MARK: - Converting
+
 extension SquarespaceItem {
     // the app's own article, nil if it has no title
     func toArticle() -> Article? {
+        // guard exits early if the check fails
         guard let title = title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
             return nil
         }

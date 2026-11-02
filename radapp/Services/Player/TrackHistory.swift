@@ -11,6 +11,7 @@ struct TrackHistory {
 
     // radiocult lists a song a while after it ends, so the one that just finished is added now
     mutating func recordFinished(_ track: NowPlaying) {
+        // guard exits early if the check fails
         guard track != .offAir, let startedAt = track.startedAt else {
             return
         }

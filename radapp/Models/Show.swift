@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - Show series
+
 // a radio show, whatever day it's on
 struct ShowSeries: Identifiable, Hashable, Codable {
     let id: String
@@ -15,6 +17,8 @@ struct ShowSeries: Identifiable, Hashable, Codable {
         return ListFormatter.localizedString(byJoining: hosts)
     }
 }
+
+// MARK: - Scheduled show
 
 // one episode on the schedule
 struct ScheduledShow: Identifiable, Hashable, Codable {

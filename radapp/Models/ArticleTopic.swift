@@ -45,6 +45,7 @@ enum ArticleTopic: CaseIterable, Identifiable, Codable {
     }
 
     // the first filter whose tag the article has, nil if none
+    // init sets up a new instance
     init?(tags: [String]) {
         let tags = Set(tags.map { tag in
             tag.lowercased()
@@ -52,6 +53,7 @@ enum ArticleTopic: CaseIterable, Identifiable, Codable {
         let match = Self.allCases.first { topic in
             tags.contains(topic.siteTag.lowercased())
         }
+        // guard exits early if the check fails
         guard let match else {
             return nil
         }

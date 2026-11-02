@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - Errors
+
 // an error status from the website
 enum SquarespaceError: LocalizedError {
     case http(Int)
@@ -12,11 +14,15 @@ enum SquarespaceError: LocalizedError {
     }
 }
 
+// MARK: - Page
+
 // one page of articles and where the next one starts
 struct ArticlePage {
     let articles: [Article]
     let nextOffset: Int64?
 }
+
+// MARK: - Client
 
 // loads articles from the radio monash squarespace site
 struct SquarespaceClient {

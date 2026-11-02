@@ -1,9 +1,14 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Accent choice
+
 // the app-wide accent colour picked in settings
+// nonisolated means not tied to the main thread
 nonisolated enum AccentChoice: String, CaseIterable, Identifiable {
     case blue, purple, pink, red, orange, yellow, green, graphite
+
+    // MARK: - Storage
 
     static let storageKey = "accentColor"
     // kept in the app group so the widget matches the app
@@ -11,11 +16,14 @@ nonisolated enum AccentChoice: String, CaseIterable, Identifiable {
 
     // the saved choice, for code outside a view (the widget)
     static var current: AccentChoice {
+        // guard exits early if the check fails
         guard let raw = store.string(forKey: storageKey), let choice = AccentChoice(rawValue: raw) else {
             return .blue
         }
         return choice
     }
+
+    // MARK: - Display
 
     var id: String {
         rawValue
@@ -41,6 +49,8 @@ nonisolated enum AccentChoice: String, CaseIterable, Identifiable {
             "Graphite"
         }
     }
+
+    // MARK: - Colours
 
     // system colours, so each adapts to dark mode and increase contrast
     var uiColor: UIColor {
@@ -77,7 +87,10 @@ nonisolated enum AccentChoice: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Environment
+
 extension EnvironmentValues {
     // read with @Environment(\.accentChoice)
+    // @Entry macro, adds a custom value to the SwiftUI environment
     @Entry var accentChoice: AccentChoice = .blue
 }

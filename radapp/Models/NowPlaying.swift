@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - Now playing
+
 // the song radiocult says is playing
 struct NowPlaying: Equatable {
     var title: String
@@ -18,12 +20,16 @@ struct NowPlaying: Equatable {
     )
 }
 
+// MARK: - Live show
+
 // a show broadcasting right now
 struct LiveShow: Equatable {
     var name: String
     var host: String?
     var endsAt: Date?
 }
+
+// MARK: - Played track
 
 // one song in the play history
 struct PlayedTrack: Identifiable, Equatable {
@@ -42,6 +48,8 @@ extension PlayedTrack {
     }
 }
 
+// MARK: - Stream state
+
 // where the audio stream is up to
 enum StreamState: Equatable {
     case idle
@@ -50,6 +58,8 @@ enum StreamState: Equatable {
     case paused
     case failed(String)
 }
+
+// MARK: - Connectivity
 
 // how good the connection is
 enum Connectivity: Equatable {

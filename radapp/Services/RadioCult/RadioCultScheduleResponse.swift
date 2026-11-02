@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - JSON
+
 // the json from schedule
 struct ScheduleResponse: Decodable {
     let schedules: [ScheduleEvent]
@@ -21,6 +23,7 @@ struct ScheduleEvent: Decodable {
     }
 
     // a bad description or artist list is skipped instead of failing the whole schedule
+    // init sets up a new instance
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
@@ -39,11 +42,14 @@ struct ScheduleArtist: Decodable {
     let name: String
 }
 
+// MARK: - Converting
+
 extension ScheduleResponse {
     // turned into the app's own shows, in start order
     func toScheduledShows() -> [ScheduledShow] {
         let shows: [ScheduledShow] = schedules.compactMap { event in
             // skip episodes with bad times
+            // guard exits early if the check fails
             guard let start = RadioCultDate.parse(event.startDateUtc),
                   let end = RadioCultDate.parse(event.endDateUtc),
                   end > start

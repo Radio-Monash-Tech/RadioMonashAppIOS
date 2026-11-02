@@ -1,9 +1,12 @@
 import SwiftUI
 
+// MARK: - Heart burst
+
 // hearts that float up when a song is liked
 struct HeartBurstOverlay: View {
     // a new value plays the burst
     let trigger: Int
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var hearts: [Heart] = []
 
     private struct Heart: Identifiable {
@@ -31,6 +34,7 @@ struct HeartBurstOverlay: View {
 
     // adds 12 random hearts and removes each once it has floated away
     private func burst(width: CGFloat) {
+        // guard exits early if the check fails
         guard width > 1 else {
             return
         }
@@ -49,6 +53,8 @@ struct HeartBurstOverlay: View {
         }
     }
 }
+
+// MARK: - Floating heart
 
 // one heart rising and fading out
 private struct FloatingHeart: View {

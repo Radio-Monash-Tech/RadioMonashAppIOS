@@ -1,9 +1,13 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Article view
+
 // one article, drawn natively from its html
 struct ArticleView: View {
     let article: Article
+
+    // MARK: - State
 
     // the local database, for saving and downloading
     @Environment(\.modelContext) private var modelContext
@@ -25,6 +29,8 @@ struct ArticleView: View {
             saved.articleID == article.id
         }
     }
+
+    // MARK: - Body
 
     var body: some View {
         ScrollView {
@@ -122,6 +128,8 @@ struct ArticleView: View {
         }
     }
 
+    // MARK: - Saving and downloading
+
     private func contentBlocks() -> [ArticleBlock] {
         ArticleHTMLParser.blocks(from: article.bodyHTML)
     }
@@ -160,12 +168,16 @@ struct ArticleView: View {
     }
 }
 
+// MARK: - Viewer image
+
 // the photo to show full screen
 private struct ViewerImage: Identifiable {
     // the block index, also the zoom animation's source id
     let id: Int
     let url: URL
 }
+
+// MARK: - Article block view
 
 // draws one ArticleBlock
 private struct ArticleBlockView: View {
@@ -289,6 +301,8 @@ enum ReaderTextSize: String, CaseIterable, Identifiable {
         }
     }
 }
+
+// MARK: - Preview
 
 #Preview {
     NavigationStack {

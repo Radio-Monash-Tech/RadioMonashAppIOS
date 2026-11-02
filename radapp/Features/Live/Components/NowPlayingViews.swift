@@ -1,5 +1,7 @@
 import SwiftUI
 
+// MARK: - Glowing artwork
+
 // the big cover art with a soft pulsing glow
 struct GlowingArtwork: View {
     let url: URL?
@@ -7,6 +9,7 @@ struct GlowingArtwork: View {
     var showsStationLogo = false
     let isBusy: Bool
     let onDoubleTap: () -> Void
+    // @State property wrapper, the view owns this value and redraws when it changes
     @State private var glow = false
 
     var body: some View {
@@ -48,6 +51,8 @@ struct GlowingArtwork: View {
         .accessibilityLabel("Now playing artwork. Double-tap to open this track in a music app.")
     }
 }
+
+// MARK: - Title and artist
 
 // the title and artist under the artwork
 struct MetadataDisplay: View {

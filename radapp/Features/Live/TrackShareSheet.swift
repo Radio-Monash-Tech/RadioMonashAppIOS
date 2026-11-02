@@ -1,10 +1,14 @@
 import SwiftUI
 
+// MARK: - Shareable track
+
 // the title and artist needed to share a song
 struct ShareableTrack: Equatable {
     let title: String
     let artist: String
 }
+
+// MARK: - Conversions
 
 extension PlayedTrack {
     var shareable: ShareableTrack {
@@ -18,10 +22,13 @@ extension FavouriteTrack {
     }
 }
 
+// MARK: - Share sheet
+
 extension View {
     // when track is set, opens its song.link page in the app, then clears it
     func trackShareSheet(for track: Binding<ShareableTrack?>) -> some View {
         task(id: track.wrappedValue) {
+            // guard exits early if the check fails
             guard let shared = track.wrappedValue else {
                 return
             }

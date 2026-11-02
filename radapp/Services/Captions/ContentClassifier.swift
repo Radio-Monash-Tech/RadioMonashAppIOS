@@ -2,13 +2,22 @@ import AVFoundation
 import SoundAnalysis
 import Synchronization
 
+// MARK: - Mode
+
 // talk or music, as far as captions care
+// nonisolated means not tied to the main thread
 nonisolated enum CaptionMode: String, Sendable {
     case talk, music
 }
 
-// decides talk or music; a change only counts once it holds, so captions don't flicker
+// MARK: - Classifier
+
+// decides talk or music, a change only counts once it holds, so captions don't flicker
+// @unchecked Sendable promises it's thread-safe, the compiler can't check
 nonisolated final class ContentClassifier: NSObject, SNResultsObserving, @unchecked Sendable {
+    // MARK: - Types and settings
+
+    // what radiocult says is on air
     enum StationHint: Sendable {
         // the automated playlist, no host: always music
         case automated
@@ -17,12 +26,16 @@ nonisolated final class ContentClassifier: NSObject, SNResultsObserving, @unchec
     }
 
     // called on the analysing thread when the mode changes
+    // @Sendable means the closure is safe to call from another thread
     var onChange: (@Sendable (CaptionMode) -> Void)?
 
-    // about 1.5 s and 3 s of agreement; captions start quickly and stop slowly
+    // about 1.5 s and 3 s of agreement, captions start quickly and stop slowly
     private static let votesToTalk = 2
     private static let votesToMusic = 4
 
+    // MARK: - State
+
+    // everything the lock protects
     private struct State {
         var mode: CaptionMode = .talk
         var hint: StationHint = .presenter
@@ -34,24 +47,31 @@ nonisolated final class ContentClassifier: NSObject, SNResultsObserving, @unchec
 
     // only used from the one task that calls analyze
     private var analyzer: SNAudioStreamAnalyzer?
+    // the format the analyser was made for
     private var analyzerFormat: AVAudioFormat?
+    // how many frames have been analysed so far
     private var framePosition: AVAudioFramePosition = 0
 
+    // MARK: - Mode and hint
+
+    // the current mode, read under the lock
     var mode: CaptionMode {
         state.withLock { state in
             state.mode
         }
     }
 
+    // switches mode straight away when what's on air changes
     func setHint(_ hint: StationHint) {
         let changed: CaptionMode? = state.withLock { state in
+            // guard exits early if the check fails
             guard state.hint != hint else {
                 return nil
             }
             state.hint = hint
             state.talkVotes = 0
             state.musicVotes = 0
-            // automated means music; a show starting usually means talk
+            // automated means music, a show starting usually means talk
             let mode: CaptionMode
             if hint == .automated {
                 mode = .music
@@ -69,6 +89,9 @@ nonisolated final class ContentClassifier: NSObject, SNResultsObserving, @unchec
         }
     }
 
+    // MARK: - Analysing audio
+
+    // passes one chunk to the sound classifier
     func analyze(_ buffer: AVAudioPCMBuffer) {
         // no point listening when radiocult already says it's music
         let hint = state.withLock { state in
@@ -100,6 +123,8 @@ nonisolated final class ContentClassifier: NSObject, SNResultsObserving, @unchec
         }
         return analyzer
     }
+
+    // MARK: - Classifier results
 
     // each classifier result is one vote for talk or music
     func request(_ request: SNRequest, didProduce result: SNResult) {

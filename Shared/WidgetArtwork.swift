@@ -1,6 +1,7 @@
 import Foundation
 
 // where the app saves cover art for the widget, which can't download images itself
+// nonisolated means not tied to the main thread
 nonisolated enum WidgetArtwork {
     static let appGroup = "group.edu.monash.radapp"
 

@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Image viewer
+
 // show full image from an article
 struct ImageViewer: View {
 
@@ -73,6 +75,8 @@ struct ImageViewer: View {
     }
 }
 
+// MARK: - Close button style
+
 // glass button on ios 26, frosted circle before that
 private struct CloseButtonStyle: ViewModifier {
     func body(content: Content) -> some View {
@@ -85,6 +89,8 @@ private struct CloseButtonStyle: ViewModifier {
         }
     }
 }
+
+// MARK: - Frosted circle button
 
 // home-made frosted circle button for older ios
 private struct MaterialCircleButtonStyle: ButtonStyle {
