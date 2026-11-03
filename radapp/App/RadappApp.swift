@@ -1,0 +1,44 @@
+import SwiftUI
+import SwiftData
+import UserNotifications
+
+// where the app starts
+@main
+struct radappApp: App {
+    
+    // create 3 temporary storage
+    @StateObject private var player: RadioPlayerModel
+    @StateObject private var schedule: ScheduleStore
+    @StateObject private var journalism = JournalismStore()
+    private let container: ModelContainer
+    
+    // initialize the app
+    init() {
+        // initialize database
+        let container: ModelContainer
+        do {
+            container = try ModelContainer(for: FavouriteTrack.self, SavedArticle.self, ListeningSegment.self)
+        } catch {
+            fatalError("Couldn't open the local database: \(error)")
+        }
+        self.container = container
+        let schedule = ScheduleStore()
+        _schedule = StateObject(wrappedValue: schedule)
+        
+        // Created now, so a widget button that launches the app in the background reaches it.
+        let player = RadioPlayerModel(modelContext: container.mainContext, schedule: schedule)
+        _player = StateObject(wrappedValue: player)
+        UNUserNotificationCenter.current().delegate = ForegroundNotificationPresenter.shared
+    }
+
+    // hand the stores and database to every screen
+    var body: some Scene {
+        WindowGroup {
+            AppTabView()
+                .environmentObject(player)
+                .environmentObject(schedule)
+                .environmentObject(journalism)
+                .modelContainer(container)
+        }
+    }
+}

@@ -1,0 +1,79 @@
+import Foundation
+
+// MARK: - JSON
+
+// one piece of the rich-text json radiocult uses for show descriptions
+struct TipTapNode: Decodable {
+    let type: String
+    let text: String?
+    let marks: [TipTapMark]?
+    let content: [TipTapNode]?
+}
+
+// bold, italic, a link ...
+struct TipTapMark: Decodable {
+    struct Attributes: Decodable {
+        let href: String?
+    }
+
+    let type: String
+    let attrs: Attributes?
+}
+
+// MARK: - Styled text
+
+extension TipTapNode {
+    // the node as styled text
+    var attributedText: AttributedString {
+        switch type {
+        case "text":
+            var run = AttributedString(text ?? "")
+            var intent = InlinePresentationIntent()
+            for mark in marks ?? [] {
+                switch mark.type {
+                case "bold":
+                    intent.insert(.stronglyEmphasized)
+                case "italic":
+                    intent.insert(.emphasized)
+                case "code":
+                    intent.insert(.code)
+                case "strike":
+                    intent.insert(.strikethrough)
+                case "link":
+                    run.link = mark.attrs?.href.flatMap(URL.init(string:))
+                default:
+                    break
+                }
+            }
+            if !intent.isEmpty {
+                run.inlinePresentationIntent = intent
+            }
+            return run
+        case "hardBreak":
+            return AttributedString("\n")
+        case "listItem":
+            return AttributedString("• ") + children(separatedBy: "\n")
+        case "doc", "blockquote":
+            return children(separatedBy: "\n\n")
+        case "bulletList", "orderedList":
+            return children(separatedBy: "\n")
+        default:
+            return children(separatedBy: "")
+        }
+    }
+
+    // the children's text joined, skipping empty ones
+    private func children(separatedBy separator: String) -> AttributedString {
+        let parts = (content ?? []).map(\.attributedText).filter { part in
+            !part.characters.isEmpty
+        }
+        var result = AttributedString()
+        for (index, part) in parts.enumerated() {
+            if index > 0 {
+                result += AttributedString(separator)
+            }
+            result += part
+        }
+        return result
+    }
+}

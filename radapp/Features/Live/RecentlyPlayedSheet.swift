@@ -1,0 +1,216 @@
+import SwiftUI
+import SwiftData
+
+// MARK: - Recently played sheet
+
+// the song on air, then what played before it, with like and share
+struct RecentlyPlayedSheet: View {
+    // MARK: - State
+
+    // opens the full history
+    let onSeeAll: () -> Void
+
+    // @EnvironmentObject property wrapper, reads a shared object passed down from a parent view
+    @EnvironmentObject private var model: RadioPlayerModel
+    @EnvironmentObject private var schedule: ScheduleStore
+    // @Query macro, loads SwiftData records and keeps them up to date
+    @Query private var favourites: [FavouriteTrack]
+    // @State property wrapper, the view owns this value and redraws when it changes
+    @State private var sharingTrack: ShareableTrack?
+    // @Environment property wrapper, reads a value SwiftUI passes down
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.accentChoice) private var accent
+
+    // MARK: - Body
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if model.isIdentifiedTrack || model.liveShow != nil {
+                    nowRow
+                }
+                // built once so each row can check quickly
+                let likedKeys = Set(favourites.map(\.key))
+                ForEach(model.history) { track in
+                    historyRow(track, isLiked: likedKeys.contains(track.favouriteKey))
+                }
+                if !model.history.isEmpty {
+                    Section {
+                        Button("See Full History", action: onSeeAll)
+                            .foregroundStyle(accent.color)
+                    }
+                }
+            }
+            .listStyle(.plain)
+            .overlay {
+                if model.history.isEmpty, !model.isIdentifiedTrack, model.liveShow == nil {
+                    ContentUnavailableView(
+                        "Nothing Played Yet",
+                        systemImage: "music.note.list",
+                        description: Text("Tracks appear here once the station reports them.")
+                    )
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 1) {
+                        Text("Recently Played").font(.headline)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel("Close")
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .trackShareSheet(for: $sharingTrack)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    // MARK: - Rows
+
+    // the song on air, or the show when no song is named
+    // @ViewBuilder lets each branch return a different view
+    @ViewBuilder
+    private var nowRow: some View {
+        if model.isIdentifiedTrack {
+            let track = model.nowPlaying
+            TrackRow(
+                title: track.title,
+                artist: track.artist,
+                artworkURL: track.artworkURL,
+                trailing: .now,
+                isLiked: model.isCurrentTrackLiked,
+                onToggleLike: nowPlayingLikeAction
+            )
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                likeAction(isLiked: model.isCurrentTrackLiked) {
+                    model.toggleLike()
+                }
+                shareAction(ShareableTrack(title: track.title, artist: track.artist))
+            }
+        } else if let show = model.liveShow {
+            TrackRow(title: show.name, artist: "On air now", artworkURL: nil, showsStationLogo: true,
+                     trailing: .now, isLiked: false, onToggleLike: nil)
+        }
+    }
+
+    // nil hides the heart when the song can't be liked
+    private var nowPlayingLikeAction: (() -> Void)? {
+        // guard exits early if the check fails
+        guard model.canLikeCurrentTrack else {
+            return nil
+        }
+        return {
+            model.toggleLike()
+        }
+    }
+
+    private func historyRow(_ track: PlayedTrack, isLiked: Bool) -> some View {
+        // saved with the show that was on when it played
+        let toggle = {
+            model.toggleLike(track, showName: schedule.onAir(at: track.playedAt)?.series.title)
+        }
+        return TrackRow(
+            title: track.title,
+            artist: track.artist,
+            artworkURL: track.artworkURL,
+            trailing: .time(track.playedAt),
+            isLiked: isLiked,
+            onToggleLike: toggle
+        )
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            likeAction(isLiked: isLiked, toggle: toggle)
+            shareAction(track.shareable)
+        }
+    }
+
+    // MARK: - Swipe actions
+
+    // @escaping means the closure is kept and called later
+    private func likeAction(isLiked: Bool, toggle: @escaping () -> Void) -> some View {
+        Button(action: toggle) {
+            Label(isLiked ? "Unlike" : "Like", systemImage: isLiked ? "heart.slash.fill" : "heart.fill")
+        }
+        .tint(isLiked ? .gray : PlayerPalette.error)
+    }
+
+    private func shareAction(_ track: ShareableTrack) -> some View {
+        Button {
+            sharingTrack = track
+        } label: {
+            Label("Share", systemImage: "square.and.arrow.up")
+        }
+        .tint(.orange)
+    }
+}
+
+// MARK: - Track row
+
+// artwork, title, artist, "Now" or the time, and a heart
+private struct TrackRow: View {
+    enum Trailing {
+        case now
+        case time(Date)
+    }
+
+    let title: String
+    let artist: String
+    let artworkURL: URL?
+    var showsStationLogo = false
+    let trailing: Trailing
+    let isLiked: Bool
+    // nil hides the heart
+    let onToggleLike: (() -> Void)?
+    @Environment(\.accentChoice) private var accent
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if showsStationLogo {
+                    Image(.stationLogo).resizable().scaledToFill()
+                } else {
+                    ArtworkImage(url: artworkURL)
+                }
+            }
+            .frame(width: 48, height: 48)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                MarqueeText(title, font: .body.weight(.medium))
+                MarqueeText(artist, font: .subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+
+            Group {
+                switch trailing {
+                case .now:
+                    Text("Now").font(.caption.weight(.bold)).foregroundStyle(accent.color)
+                case .time(let date):
+                    Text(date, style: .time).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .monospacedDigit()
+
+            if let onToggleLike {
+                Button(action: onToggleLike) {
+                    Image(systemName: isLiked ? "heart.fill" : "heart")
+                        .foregroundStyle(isLiked ? PlayerPalette.error : .secondary)
+                        .frame(width: 36, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isLiked ? "Unlike \(title)" : "Like \(title)")
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
