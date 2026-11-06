@@ -1,6 +1,6 @@
-import Foundation
+import UIKit
 
-// audio set-up at launch, and reacting to calls and unplugged headphones
+// audio set-up at launch, and reacting to calls, unplugged headphones and lost connections
 extension RadioPlayerModel {
     // MARK: - Launch set-up
 
@@ -13,6 +13,7 @@ extension RadioPlayerModel {
         isSessionPrepared = true
         configureAudioSession()
         audioSession.observe()
+        network.start()
         // lock screen buttons
         systemPlayers.configure(
             play: { [weak self] in
@@ -75,5 +76,48 @@ extension RadioPlayerModel {
                 play()
             }
         }
+    }
+
+    // MARK: - Network
+
+    func networkChanged(isConnected: Bool) {
+        if isConnected {
+            Task {
+                // the first requests after reconnecting can still fail, so give it a second
+                try? await Task.sleep(for: .seconds(1))
+                // guard exits early if the check fails
+                guard network.isConnected else {
+                    return
+                }
+                // fetching song info sets the badge back to live
+                restartPolling()
+                if resumeWhenOnline {
+                    resumeWhenOnline = false
+                    // the stream may have already reconnected by itself
+                    if state != .playing {
+                        play()
+                    }
+                }
+            }
+        } else {
+            setIfChanged(\.connectivity, .offline)
+            // guard exits early if the check fails
+            guard isActive else {
+                return
+            }
+            resumeWhenOnline = true
+            showOfflineAlert()
+        }
+    }
+
+    // only while the app is open, not from the lock screen or a widget
+    func showOfflineAlert() {
+        guard UIApplication.shared.applicationState == .active else {
+            return
+        }
+        SystemPresenter.settingsAlert(
+            title: "No Internet Connection",
+            message: "Please turn on Wi-Fi or mobile data to listen to Radio Monash."
+        )
     }
 }

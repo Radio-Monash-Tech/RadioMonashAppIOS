@@ -59,6 +59,7 @@ final class RadioPlayerModel: ObservableObject {
     let client = RadioCultClient.shared
     let stream = RadioStream()
     let audioSession = RadioAudioSession()
+    let network = NetworkMonitor()
     let systemPlayers = SystemPlayerSync()
     let captions: CaptionCoordinator
     // nil without a database, e.g. in previews
@@ -74,6 +75,8 @@ final class RadioPlayerModel: ObservableObject {
     var sleepTimerTask: Task<Void, Never>?
     // a call paused us, so play again when it ends
     var resumeAfterInterruption = false
+    // the connection dropped while listening, so play again when it's back
+    var resumeWhenOnline = false
     var isSessionPrepared = false
 
     // MARK: - Init
@@ -95,6 +98,9 @@ final class RadioPlayerModel: ObservableObject {
         }
         audioSession.onEvent = { [weak self] event in
             self?.handle(event)
+        }
+        network.onChange = { [weak self] isConnected in
+            self?.networkChanged(isConnected: isConnected)
         }
         // set up now, since a widget button can launch the app before any screen appears
         WidgetActions.togglePlayback = { [weak self] in

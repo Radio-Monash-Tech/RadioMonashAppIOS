@@ -21,6 +21,18 @@ enum SystemPresenter {
         present(alert)
     }
 
+    // a popup with OK and a button to this app's page in the settings app
+    static func settingsAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Settings", style: .default) { _ in
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        })
+        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
+        present(alert)
+    }
+
     // presents from whatever is on top of the screen right now
     private static func present(_ controller: UIViewController) {
         // window scenes only
