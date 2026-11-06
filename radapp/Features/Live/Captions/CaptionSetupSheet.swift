@@ -11,6 +11,8 @@ struct CaptionSetupSheet: View {
     @Environment(\.dismiss) private var dismiss
     // the app's accent colour
     @Environment(\.accentChoice) private var accent
+    // @ScaledMetric property wrapper, grows with the dynamic type text size
+    @ScaledMetric(relativeTo: .largeTitle) private var iconSize: CGFloat = 48
 
     // MARK: - Body
 
@@ -19,7 +21,7 @@ struct CaptionSetupSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     Image(systemName: "captions.bubble.fill")
-                        .font(.system(size: 48))
+                        .font(.system(size: iconSize))
                         .foregroundStyle(accent.color)
                         .frame(maxWidth: .infinity)
                         .accessibilityHidden(true)

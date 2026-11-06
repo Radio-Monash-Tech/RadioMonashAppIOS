@@ -48,15 +48,23 @@ struct TotalListeningCard: View {
 
     // MARK: - Parts
 
+    // @ScaledMetric property wrapper, grows with the dynamic type text size
+    @ScaledMetric(relativeTo: .largeTitle) private var numberSize: CGFloat = 60
+
     // "6h 05m" in big numbers
     private var total: some View {
-        let minutes = Int(stats.total / 60)
+        let totalMinutes = Int(stats.total / 60)
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+
         return HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text("\(minutes / 60)").font(.system(size: 60, weight: .bold))
-            Text("h").font(.title.weight(.medium)).foregroundStyle(.secondary)
+            number("\(hours)")
+            unit("h")
+                // a gap between the hours and the minutes
                 .padding(.trailing, 10)
-            Text(String(format: "%02d", minutes % 60)).font(.system(size: 60, weight: .bold))
-            Text("m").font(.title.weight(.medium)).foregroundStyle(.secondary)
+            // always two digits, e.g. "05"
+            number(String(format: "%02d", minutes))
+            unit("m")
         }
         .monospacedDigit()
         .lineLimit(1)
@@ -64,7 +72,25 @@ struct TotalListeningCard: View {
         .minimumScaleFactor(0.5)
         // voiceover reads "6 hours, 5 minutes"
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Total listening, \(Duration.seconds(stats.total).formatted(.units(allowed: [.hours, .minutes], width: .wide)))")
+        .accessibilityLabel("Total listening, \(spokenTotal)")
+    }
+
+    // the big bold digits
+    private func number(_ value: String) -> some View {
+        Text(value)
+            .font(.system(size: numberSize, weight: .bold))
+    }
+
+    // the smaller grey "h" or "m" after each number
+    private func unit(_ letter: String) -> some View {
+        Text(letter)
+            .font(.title.weight(.medium))
+            .foregroundStyle(.secondary)
+    }
+
+    // "6 hours, 5 minutes"
+    private var spokenTotal: String {
+        Duration.seconds(stats.total).formatted(.units(allowed: [.hours, .minutes], width: .wide))
     }
 
     // "↑ 1h 20m more than last week"

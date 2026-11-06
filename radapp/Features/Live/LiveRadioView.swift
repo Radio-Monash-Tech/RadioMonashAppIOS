@@ -232,10 +232,12 @@ struct LiveRadioView: View {
             }
         } label: {
             Text("Aa")
-                .font(.system(size: 15, weight: .semibold))
-                .frame(width: 44, height: 44)
+                .font(.subheadline.weight(.semibold))
+                .frame(minWidth: 44, minHeight: 44)
         }
         .accessibilityLabel("Caption Options")
+        // capped like the live badge, so it fits in the navigation bar
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 
     // MARK: - Titles and controls
@@ -281,6 +283,8 @@ struct LiveRadioView: View {
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 20)
+        // the buttons grow with text size up to here, past that they'd push the player off screen
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .background(LinearGradient(colors: [.clear, Color(.systemBackground).opacity(0.3)], startPoint: .top, endPoint: .bottom))
     }
 

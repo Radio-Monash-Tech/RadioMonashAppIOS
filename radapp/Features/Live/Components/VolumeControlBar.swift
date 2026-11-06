@@ -10,6 +10,9 @@ struct VolumeControlBar: View {
     @State private var isMuted: Bool
     @State private var systemVolume = AVAudioSession.sharedInstance().outputVolume
     private let onMuteChange: (Bool) -> Void
+    // @ScaledMetric property wrapper, grows with the dynamic type text size
+    @ScaledMetric private var iconSize: CGFloat = 17
+    @ScaledMetric private var circleSize: CGFloat = 48
 
     // @escaping means the closure is kept and called later, init sets up a new instance
     init(isMuted: Bool, onMuteChange: @escaping (Bool) -> Void) {
@@ -27,11 +30,10 @@ struct VolumeControlBar: View {
             Button {
                 isMuted.toggle()
             } label: {
-                // fixed size so it never outgrows its 48pt circle
                 Image(systemName: isSilent ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                    .font(.system(size: 17))
+                    .font(.system(size: iconSize))
                     .foregroundStyle(.primary)
-                    .frame(width: 48, height: 48)
+                    .frame(width: circleSize, height: circleSize)
                     .background(.fill.tertiary, in: Circle())
             }
             .buttonStyle(.plain)

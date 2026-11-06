@@ -71,7 +71,7 @@ struct AboutView: View {
     private var intro: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("SINCE 1972")
-                .font(.system(size: 10.5, weight: .bold))
+                .font(.caption2.weight(.bold))
                 .kerning(1)
                 .foregroundStyle(accent.color)
                 .padding(.horizontal, 10)
