@@ -3,6 +3,8 @@ import SwiftUI
 // the LIVE / BUFFERING / OFFLINE pill in the toolbar
 struct ConnectionQualityBadge: View {
     let connectivity: Connectivity
+    // why it isn't live, nil when live
+    var reason: String?
     // @Environment property wrapper, reads a value SwiftUI passes down
     @Environment(\.accentChoice) private var accent
     // @State property wrapper, the view owns this value and redraws when it changes
@@ -30,6 +32,15 @@ struct ConnectionQualityBadge: View {
         case .offline:
             return "OFFLINE"
         }
+    }
+
+    // "Offline. Lost connection to the stream. Tap play to try again."
+    private var spokenText: String {
+        let status = text.capitalized
+        guard let reason else {
+            return status
+        }
+        return status + ". " + reason
     }
 
     private var isLive: Bool {
@@ -79,5 +90,14 @@ struct ConnectionQualityBadge: View {
         .animation(.easeInOut(duration: 0.3), value: connectivity)
         // capped so it fits beside the title
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+        // read as one sentence with the reason, not the dot and the word separately
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenText)
+        // voiceover users hear it go offline even when they're focused somewhere else
+        .onChange(of: connectivity) { _, newValue in
+            if newValue == .offline {
+                AccessibilityNotification.Announcement(spokenText).post()
+            }
+        }
     }
 }

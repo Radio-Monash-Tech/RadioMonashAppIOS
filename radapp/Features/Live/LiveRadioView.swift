@@ -42,7 +42,7 @@ struct LiveRadioView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    ConnectionQualityBadge(connectivity: badgeConnectivity)
+                    ConnectionQualityBadge(connectivity: badgeConnectivity, reason: badgeReason)
                         .fixedSize()
                 }
                 .hidingSharedBackground()
@@ -83,6 +83,24 @@ struct LiveRadioView: View {
             return .offline
         }
         return model.connectivity
+    }
+
+    // why the badge isn't live, read out by voiceover
+    private var badgeReason: String? {
+        if !model.network.isConnected {
+            return "No internet connection. Turn on Wi-Fi or mobile data."
+        }
+        if case .failed(let message) = model.state {
+            return message + " Tap play to try again."
+        }
+        switch model.connectivity {
+        case .good:
+            return nil
+        case .weak:
+            return "Weak connection, the stream may pause."
+        case .offline:
+            return "Couldn't reach Radio Monash."
+        }
     }
 
     private var playerSection: some View {
