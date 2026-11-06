@@ -11,7 +11,6 @@ struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance: AppearancePreference = .system
     @AppStorage(RadioPlayerModel.resumeOnLaunchKey) private var resumeOnLaunch = false
     @AppStorage(ShowReminderScheduler.enabledKey) private var showReminders = true
-    @AppStorage("newArticleAlerts") private var newArticleAlerts = false
     @AppStorage(AccentChoice.storageKey, store: AccentChoice.store) private var accent: AccentChoice = .blue
     @AppStorage(ContrastPreference.storageKey) private var increaseContrast = false
     @AppStorage(ColourVision.storageKey, store: ColourVision.store) private var colourVision: ColourVision = .standard
@@ -171,7 +170,6 @@ struct SettingsView: View {
                     Text("Show Reminders")
                     Text("10 minutes before a followed show")
                 }
-                Toggle("New Articles", isOn: $newArticleAlerts)
             }
 
             Section("Storage") {
@@ -187,6 +185,9 @@ struct SettingsView: View {
             Section {
                 NavigationLink("About Radapp") {
                     AboutView()
+                }
+                NavigationLink("Privacy") {
+                    PrivacyView()
                 }
             } footer: {
                 VStack(spacing: 2) {

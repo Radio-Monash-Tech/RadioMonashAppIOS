@@ -19,7 +19,11 @@ struct radappApp: App {
         do {
             container = try ModelContainer(for: FavouriteTrack.self, SavedArticle.self, ListeningSegment.self)
         } catch {
-            fatalError("Couldn't open the local database: \(error)")
+            // the saved database won't open, so use a temporary one instead of crashing
+            // likes and stats still work but aren't kept after the app closes
+            let temporary = ModelConfiguration(isStoredInMemoryOnly: true)
+            container = try! ModelContainer(for: FavouriteTrack.self, SavedArticle.self, ListeningSegment.self,
+                                            configurations: temporary)
         }
         self.container = container
         let schedule = ScheduleStore()
